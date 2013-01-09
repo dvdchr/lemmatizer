@@ -8,9 +8,9 @@
                         Rolando <rolando_kai@hotmail.com>
                         Stephen Hadisurja <stephen.hadisurja@gmail.com>
 
-        @version        0.2c-unfinished    [revision by David]
+        @version        0.3-unfinished    [revision by David]
 
-        @date           07 Jan 2013, 23:01
+        @date           09 Jan 2013, 16:25
 
         @description    @todo LOW - explain what all this fuzz is about. bla
                         bla bla bla.. lorem ipsum dolor sit amet
@@ -28,9 +28,13 @@
 
         CHANGELOG:
         ---------
+        VERSION 0.3 - unfinished
+        + added variable for tracking complex prefix transformations (for later backtracking step)
+        + added variable for tracking recoding path possibility (for recoding step)
+        + ONGOING - complex derivational prefix removal
 
         VERSION 0.2 - 05 Jan 2013
-        + [0.2c] ONGOING - derivational prefix removal
+        + [0.2c] added plain derivational prefix removal
         + [0.2c] added comments that separate properties and methods
         + [0.2c] added a few basic logic to main public function 'eat'
         + [0.2c] removed disallowed affix pairs function, for reengineering
@@ -66,6 +70,10 @@
         ********************************************************************************
         */
 
+
+        const VOWEL = "[aiueo]";
+        const CONSONANT = "[bcdfghjklmnpqrstvwxyz]";
+        const ALPHA = "[a-z]+-?[a-z]*";
         /*
             Holds the removed suffixes/prefixes for backtracking procedure
 
@@ -83,8 +91,11 @@
 
             @var string
         */
-        protected $original;
+        protected $original = null;
 
+        protected $complex_prefix_tracker = array();
+
+        protected $recoding_tracker = array();
 
 
         /*
@@ -143,7 +154,7 @@
                 @var array list of strings
             */
             $patterns = array(
-                    0 => "/^(be)\w+(an|lah)$/",
+                    0 => "/^(be)[a-z]+-?[a-z]*(an|lah)$/",
                     1 => "/^(me|di|pe|ter)\w+i$/"
                 );
 
@@ -330,6 +341,7 @@
 
         }
 
+
         /**
             @todo   LOW - description about what this function does.
 
@@ -337,6 +349,21 @@
             @return string or boolean(false)
         */
         protected function delete_derivational_prefix($word) {
+
+            /*
+                Loads normalized vowel regex from class' [constant]; for shorthand purposes.
+
+                @var string 
+            */
+            $vowel = self::VOWEL;
+
+            /*
+                Loads normalized consonant regex from class' [constant]; for shorthand purposes.
+
+                @var string 
+            */
+            $consonant = self::CONSONANT;
+
 
             /*
                 Holds the value after suffix removal process
@@ -385,6 +412,90 @@
                                             > Structure removal history for recoding
 
                     	*/
+
+                        /*
+                            Temporary single-member array, used to hold complex prefix transformations
+                            to be pushed to the tracker.
+
+                            @var array
+                        */
+                        $modification;
+
+                        /*
+                            Initializes recoding tracker with empty string. If a corresponding
+                            rule does not have a recoding path, then it will be kept as empty string
+                        */
+                        array_push($this->recoding_tracker, array($match[0] => ""));
+
+                        /*************************************************************************
+                        **   "be-" PREFIX RULES
+                        *************************************************************************/
+
+                        if($match[0] == "be") {
+
+                            /*
+                                RULE 1
+                                input: berV...
+                                output: ber - V... OR be - rV...
+                            */
+                            if(preg_match("/^ber$vowel/", $result)) {
+
+                                $result = preg_replace("/^ber/", "", $result);
+
+                                // save prefix changes
+                                $modification = array("ber" => "");
+
+                                // saves recoding path
+                                $this->recoding_tracker[$match[0]] = "/^be/";
+
+                            }
+
+                            /*
+                                RULE 2
+                                input:
+                                output:
+                            */
+                            else if(preg_match(""))
+
+
+                        }
+                        
+
+                        /*************************************************************************
+                        **   "me-" PREFIX RULES
+                        *************************************************************************/
+
+                        else if($match[0] == "me") {
+
+                            // TODO
+
+                        }
+
+
+                        /*************************************************************************
+                        **   "pe-" PREFIX RULES
+                        *************************************************************************/
+
+                        else if($match[0] == "pe") {
+
+                            // TODO
+
+                        }
+
+
+                        /*************************************************************************
+                        **   "te-" PREFIX RULES
+                        *************************************************************************/
+                        
+                        else if($match[0] == "te") {
+
+                            // TODO
+
+                        }
+
+
+                        // saves modification changes to prefix tracker
+                        array_push($this->complex_prefix_tracker, $modification);
 
                     }
 
@@ -491,6 +602,10 @@
     $subject = "diberikannya";
     $lemmatizer = new Lemmatizer;
 
+    $pat = "gi";
+    if(preg_match("/^ber[aiueo]$pat/", "beragi", $match)) {
+        echo "match: $match[0] <br />";
+    }
     echo "Input: $subject<br />";
     echo 'Result: ' . $lemmatizer->eat($subject);
     $removed = $lemmatizer->getRemoved();

@@ -8,9 +8,9 @@
                         Rolando <rolando_kai@hotmail.com>
                         Stephen Hadisurja <stephen.hadisurja@gmail.com>
 
-        @version        0.3-unfinished    [revision by David]
+        @version        0.3    [revision by David]
 
-        @date           09 Jan 2013, 16:25
+        @date           10 Jan 2013, 16:28
 
         @description    @todo LOW - explain what all this fuzz is about. bla
                         bla bla bla.. lorem ipsum dolor sit amet
@@ -20,18 +20,29 @@
         TODO:
         ----
 
+        + rules ordering
+        + recoding
+        + backtracking
         + Lookup function
         + Disallowed Affix pairs for derivational affixes
-        + Derivational Prefix removal (version 0.3, ETA: 07 Jan 2013)
-        + ...(TBA)
+        
+        + check for more frequently used rules
+        + lemma phrases handling
 
 
         CHANGELOG:
         ---------
-        VERSION 0.3 - unfinished
+        VERSION 0.3 - 10 Jan 2013
+        + updated TODO list
+        + added rules for handling 'pe-' prefix variants
+        + updated TODO list
+        + slight source documentation update
+        + variable $prefix to store the detected prefix; this was done to prevent variable overloading at rule 13 and 17
+        + rules for handling 'be-', 'me-', and 'te-' prefix variants
+        + constants to store repetitive regex patterns such as vowel, consonant, alphabet (VOWEL, CONSONANT, ALPHA respectively)
+        + variable $type to easily control what kind of prefix we're handling
         + added variable for tracking complex prefix transformations (for later backtracking step)
         + added variable for tracking recoding path possibility (for recoding step)
-        + ONGOING - complex derivational prefix removal
 
         VERSION 0.2 - 05 Jan 2013
         + [0.2c] added plain derivational prefix removal
@@ -153,14 +164,14 @@
             @debug 	the function is still in debug mode.
 
             @param string $word
-            @return string OR boolean(false)
+            @return mixed
         */
         protected function lookup($word) {
 
             /**
                 NOTE
                 This is still a test mode. Later on, the conditional
-                should contain a successful dictionary lookup
+                should contain a successful dictionary lookup.
             */
             if(false) {
 
@@ -204,7 +215,7 @@
                 @var array list of strings
             */
             $patterns = array(
-                    0 => "/^(be)$alpha(an|lah)$/",
+                    0 => "/^(be)$alpha+(an|lah)$/",
                     1 => "/^(me|di|pe|ter)$alpha+i$/"
                 );
 
@@ -400,11 +411,18 @@
         }
 
 
-        /**
-            @todo   LOW - description about what this function does.
+        /*
+            Attempts to remove derivational prefixes di-, ke-, se-, be-, pe-,
+            me-, pe- from input word. Generally, derivational prefix is divided to
+            2 different group: 
+                plain (di-, ke-, se-) and 
+                complex (be-,me-,pe-,te-)
+
+            Complex prefixes need transformation rules for certain cases in order to
+            correctly lemmatize the input word.
 
             @param string $word
-            @return string or boolean(false)
+            @return mixed
         */
         protected function delete_derivational_prefix($word) {
 
@@ -445,10 +463,23 @@
             */
             $type;
 
+            /*
+                Records what the matching prefix is for later use
+
+                @var string
+            */
+            $prefix;
+
+            /*  
+                Regular expressions for plain and complex derivational prefixes
+
+                @var array list of strings
+            */
             $patterns = array(
                     'plain' => "/^(di|(k|s)e)/",
                     'complex' => "/^(b|m|p|t)e/"
                 );
+
 
             foreach($patterns as $key => $pattern) {
 
@@ -456,6 +487,9 @@
 
                     // saves the detected prefix's type
                     $type = ($key=='plain') ? true : false;
+
+                    // saves matching prefix for later usage
+                    $prefix = $match[0];
 
                     /*
                         Initializes recoding variable for found prefix; if the corresponding
@@ -465,7 +499,8 @@
 
                     /*
 
-
+                        If the prefix belongs to the 'plain' group, then immediate removal is done;
+                        However if the prefix belongs to complex group, transformation rules must apply
 
                     */
                     if($type) {
@@ -473,7 +508,7 @@
                         $result = preg_replace($pattern, '', $result);
 
                         // save modification changes to prefix tracker
-                        $this->complex_prefix_tracker[$match[0]] = array($match[0] => "");
+                        $this->complex_prefix_tracker[$prefix] = array($prefix => "");
 
                     } else {
 
@@ -500,7 +535,7 @@
                         **   total rule: 5   
                         *************************************************************************/
 
-                        if($match[0] == "be") {
+                        if($prefix == "be") {
 
                             /*
                                 RULE 1
@@ -515,7 +550,7 @@
                                 $modification = array("ber" => "");
 
                                 // save recoding path
-                                $this->recoding_tracker[$match[0]] = array("be" => "");
+                                $this->recoding_tracker[$prefix] = array("be" => "");
 
                             }
 
@@ -578,10 +613,11 @@
                         
 
                         /*************************************************************************
-                        **   "te-" PREFIX RULES
+                        **  "te-" PREFIX RULES
+                        **  total rule: 4
                         *************************************************************************/
                         
-                        else if($match[0] == "te") {
+                        else if($prefix == "te") {
 
                             /*
                                 RULE 6
@@ -593,10 +629,10 @@
                                 $result = preg_replace("/^ter/", "", $result);
 
                                 // save prefix changes
-                                $this->complex_prefix_tracker[$match[0]] = array("ter" => "");
+                                $this->complex_prefix_tracker[$prefix] = array("ter" => "");
 
                                 // save recoding path
-                                $this->recoding_tracker[$match[0]] = array("te" => "");
+                                $this->recoding_tracker[$prefix] = array("te" => "");
 
                             }
 
@@ -610,7 +646,7 @@
                                 $result = preg_replace("/^ter/", "", $result);
 
                                 // save prefix changes
-                                $this->complex_prefix_tracker[$match[0]] = array("ter" => "");
+                                $this->complex_prefix_tracker[$prefix] = array("ter" => "");
 
                             }
 
@@ -624,7 +660,7 @@
                                 $result = preg_replace("/^ter/", "", $result);
 
                                 // save prefix changes
-                                $this->complex_prefix_tracker[$match[0]] = array("ter" => "");
+                                $this->complex_prefix_tracker[$prefix] = array("ter" => "");
 
                             }
 
@@ -638,10 +674,10 @@
                                 $result = preg_replace("/^te/", "", $result);
 
                                 // save prefix changes
-                                $this->complex_prefix_tracker[$match[0]] = array("te" => "");
+                                $this->complex_prefix_tracker[$prefix] = array("te" => "");
 
                             }
-                            
+
                         }
 
 
@@ -650,7 +686,7 @@
                         **  total rule: 10
                         *************************************************************************/
 
-                        else if($match[0] == "me") {
+                        else if($prefix == "me") {
 
                             /*
                                 RULE 10
@@ -707,7 +743,7 @@
                                 $modification = array("mem$match[1]" => "");
 
                                 // save recoding path
-                                $this->recoding_tracker[$match[0]] = array("mem" => "p");
+                                $this->recoding_tracker[$prefix] = array("mem" => "p");
 
                             }
 
@@ -738,7 +774,7 @@
                                 $modification = array("me" => "");
 
                                 // save recoding path
-                                $this->recoding_tracker[$match[0]] = array("men" => "t");
+                                $this->recoding_tracker[$prefix] = array("men" => "t");
 
                             }
 
@@ -778,7 +814,7 @@
                                     $modification = array("meng" => "");
 
                                     // save recoding path
-                                    $this->recoding_tracker[$match[0]] = array("meng" => "k");    
+                                    $this->recoding_tracker[$prefix] = array("meng" => "k");    
                                 }
                                 
                             }
@@ -815,18 +851,274 @@
 
 
                         /*************************************************************************
-                        **   "pe-" PREFIX RULES
+                        **  "pe-" PREFIX RULES
+                        **  total rule: 16
                         *************************************************************************/
 
-                        else if($match[0] == "pe") {
+                        else if($prefix == "pe") {
 
-                            // TODO
+                            /*
+                                RULE 20
+                                input: pe{w|y}V...
+                                output: pe-{w|y}V...
+                            */
+                            if(preg_match("/^pe[wy]$vowel/", $result)) {
+
+                                $result = preg_replace("/^pe/", "", $result);
+
+                                // save prefix changes
+                                $modification = array("pe" => "");
+
+                            }
+
+                            /*
+                                RULE 21
+                                input: perV...
+                                output: per-V... | pe-rV...
+                            */
+                            else if(preg_match("/^per$vowel/", $result)) {
+
+                                $result = preg_replace("/^per/", "", $result);
+
+                                // save prefix changes
+                                $modification = array("per" => "");
+
+                                // save recoding path
+                                $this->recoding_tracker[$prefix] = array("pe" => "");
+
+                            }
+
+                            /*
+                                RULE 22 
+                                input: perCAP...
+                                output: per-CAP... where C!='r' and P!='er'
+                            */
+                            else if(preg_match("/^per[bcdfghjklmnpqstvwxyz](?!er)/", $result)) {
+
+                                $result = preg_replace("/^per/", "", $result);
+
+                                // save prefix changes
+                                $modification = array("per" => "");
+
+                            }
+
+                            /*
+                                RULE 23
+                                input: perCAerV...
+                                output: per-CAerV... where C!= 'r'
+                            */
+                            else if(preg_match("/^per[bcdfghjklmnpqstvwxyz][a-z]er$vowel/", $result)) {
+
+                                $result = preg_replace("/^per/", "", $result);
+
+                                // save prefix changes
+                                $modification = array("per" => "");
+
+                            }
+
+                            /*
+                                RULE 24
+                                input: pem{b|f|V}...
+                                output: pem-{b|f|V}...
+                            */
+                            else if(preg_match("/^pem[bfaiueo]/", $result)) {
+
+                                $result = preg_replace("/^pem/", "", $result);
+
+                                // save prefix changes
+                                $modification = array("pem" => "");
+
+                            }
+
+                            /*
+                                RULE 25
+                                input: pem{rV|V}...
+                                output: pe-m{rV|V}... | pe-p{rV|V}...
+                            */
+                            else if(preg_match("/^pem(r?)$vowel/", $result)) {
+
+                                $result = preg_replace("/^pe/", "", $result);
+
+                                // save prefix changes
+                                $modification = array("pe" => "");
+
+                                // save recoding path
+                                $this->recoding_tracker[$prefix] = array("pem" => "p");
+                         
+                            }
+
+                            /*
+                                RULE 26
+                                input: pen{c|d|j|z}...
+                                output: pen-{c|d|j|z}...
+                            */
+                            else if(preg_match("/^pen[cdjz]/", $result)) {
+
+                                $result = preg_replace("/^pen/", "", $result);
+
+                                // save prefix changes
+                                $modification = array("pen" => "");
+
+                            }
+
+                            /*
+                                RULE 27
+                                input: penV...
+                                output: pe-nV... | pe-tV... 
+                            */
+                            else if(preg_match("/^pen$vowel/", $result)) {
+
+                                $result = preg_replace("/^pe/", "", $result);
+
+                                // save prefix changes
+                                $modification = array("pe" => "");
+
+                                // save recoding path
+                                $this->recoding_tracker[$prefix] = array("pen" => "t");
+
+                            }
+
+                            /*
+                                RULE 28
+                                input: pengC...
+                                output: peng-C...
+                            */
+                            else if(preg_match("/^peng$consonant/", $result)) {
+
+                                $result = preg_replace("/^peng/", "", $result);
+
+                                // save prefix changes
+                                $modification = array("peng" => "");
+
+                            }
+
+                            /*
+                                RULE 29
+                                input: pengV...
+                                output: peng-V | peng-kV... | pengV-... if V='e'
+                            */
+                            else if(preg_match("/^peng($vowel)/", $result, $match)) {
+
+                                if($match[1] == 'e') {
+
+                                    $result = preg_replace("/^penge/", "", $result);
+
+                                    // save prefix changes
+                                    $modification = array("penge" => "");
+
+                                } else {
+
+                                    $result = preg_replace("/^peng/", "", $result);
+
+                                    // save prefix changes
+                                    $modification = array("peng" => "");
+
+                                    // save recoding path
+                                    $this->recoding_tracker[$prefix] = array("peng" => "k");    
+                                }
+
+                            }
+
+                            /*
+                                RULE 30
+                                input: penyV...
+                                output: peny-sV...
+                            */
+                            else if(preg_match("/^peny$vowel/", $result)) {
+
+                                $result = preg_replace("/^peny/", "s", $result);
+
+                                // save prefix changes
+                                $modification = array("peny" => "s");
+
+                            }
+
+                            /*
+                                RULE 31
+                                input: pelV...
+                                output: pe-lV... | pel-V if 'pelajar'
+                            */
+                            else if(preg_match("", $result)) {
+
+                                if($result == "pelajar") {
+
+                                    $result = preg_replace("/^pel/", "", $result);
+
+                                    // save prefix changes
+                                    $modification = array("pel" => "");
+
+                                } else {
+
+                                    $result = preg_replace("/^pe/", "", $result);
+
+                                    // save prefix changes
+                                    $modification = array("pe" => "");
+
+                                }
+
+                            }
+
+                            /*
+                                RULE 32
+                                input: peCerV...
+                                output: per-CerV... where C!={r|w|y|l|m|n}
+                            */
+                            else if(preg_match("/^pe[bcdfghjkpqstvxz]er$vowel/", $result)) {
+
+                                $result = preg_replace("/^pe/", "", $result);
+
+                                // save prefix changes
+                                $modification = array("" => "");
+
+                            }
+
+                            /*
+                                RULE 33
+                                input: peCP...
+                                output: pe-CP... where C!={r|w|y|l|m|n} and P!='er'
+                            */
+                            else if(preg_match("/^pe[bcdfghjkpqstvxz](?!er)/", $result)) {
+
+                                $result = preg_replace("/^pe/", "", $result);
+
+                                // save prefix changes
+                                $modification = array("pe" => "");
+
+                            }
+
+                            /*
+                                RULE 34
+                                input: terC1erC2...
+                                output: ter-C1erC2... where C1!='r'
+                            */
+                            else if(preg_match("/^ter[bcdfghjklmnpqstvwxyz]er$consonant/", $result)) {
+
+                                $result = preg_replace("/^ter/", "", $result);
+
+                                // save prefix changes
+                                $modification = array("ter", "");
+
+                            }
+
+                            /*
+                                RULE 35
+                                input: peC1erC2...
+                                output: pe-C1erC2... where C1!={r|w|y|l|m|n}
+                            */
+                            else if(preg_match("/^ter[bcdfghjkpqstvxz]er$consonant/", $result)) {
+
+                                $result = preg_replace("/^pe/", "", $result);
+
+                                // save prefix changes
+                                $modification = array("pe", "");
+
+                            }
 
                         }
 
 
                         // saves modification changes to prefix tracker
-                        $this->complex_prefix_tracker[$match[0]] = $modification;
+                        $this->complex_prefix_tracker[$prefix] = $modification;
 
                     }
 
@@ -890,7 +1182,7 @@
 
                 /**
 
-                    @todo MEDIUM - ordering of function executions.
+                    @todo HIGH - ordering of function executions.
 
                 */
 
@@ -930,11 +1222,11 @@
         TESTING / DEBUG LINES
 
     **/
-    $subject = "beragi";
+    $subject = "perasaannyapun";
     $lemmatizer = new Lemmatizer;
 
     $pat = "[a-z]+-?([a-z]*)";
-    if(preg_match("/^mem(r?)\w+$/", "memoses", $match)) {
+    if(preg_match("/^mem(?!er)/", "memer", $match)) {
         echo var_dump($match) . "<br /><br />";
     }
     echo "Input: $subject<br />";
@@ -961,4 +1253,5 @@
 
     }
 
+    echo "<br /><br />Recoding: ";
     echo var_dump($lemmatizer->recoding_tracker);

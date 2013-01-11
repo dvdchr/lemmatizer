@@ -8,9 +8,9 @@
                         Rolando <rolando_kai@hotmail.com>
                         Stephen Hadisurja <stephen.hadisurja@gmail.com>
 
-        @version        0.4-debug   [revision by David]
+        @version        0.4a-debug   [revision by David]
 
-        @date           12 Jan 2013, 01:40
+        @date           12 Jan 2013, 02:39
 
         @description    @todo LOW - explain what all this fuzz is about. bla
                         bla bla bla.. lorem ipsum dolor sit amet
@@ -30,6 +30,10 @@
         CHANGELOG:
         ---------
         VERSION 0.4-debug - 12 Jan 2013
+        + [0.4a] hotfix for recoding function; enabled multiple recoding sources, and 
+          optimized algorithm
+
+        + changed file name to "lemmatizer"
         + (-debug) tag added to version because of debugging prints (will be removed on release version)
         + added no0b interface for easier testing
         + updated TODO list
@@ -241,7 +245,7 @@
                 @var array list of strings
             */
             $patterns = array(
-                    0 => "/^(be)(?!r){$alpha}([^k]an|lah)$/",
+                    0 => "/^(be)[^r]{$alpha}([^k]an|lah)$/",
                     1 => "/^(me|di|pe|ter){$alpha}i$/"
                 );
 
@@ -868,6 +872,9 @@
                                     // save prefix changes
                                     $modification = array("menge" => "");
 
+                                    $this->recoding_tracker[$prefix] = array("meng1" => "");
+                                    $this->recoding_tracker[$prefix]["meng2"] = "k";
+
                                 } else {
 
                                     $result = preg_replace("/^meng/", "", $result);
@@ -1068,6 +1075,9 @@
                                     // save prefix changes
                                     $modification = array("penge" => "");
 
+                                    $this->recoding_tracker[$prefix] = array("peng1" => "");
+                                    $this->recoding_tracker[$prefix]["peng2"] = "k";
+
                                 } else {
 
                                     $result = preg_replace("/^peng/", "", $result);
@@ -1184,7 +1194,12 @@
                             // saves modification changes to prefix tracker
                             $this->complex_prefix_tracker[$prefix] = $modification;
 
-                        } else echo "modification is null!<br />";
+                        } else {
+
+                            break;
+                            echo "modification is null!<br />";
+                        
+                        }
                         
 
                     }
@@ -1277,13 +1292,26 @@
 
                 if($recode!="") {
 
-                    $added = reset($recode);
-                    $removed =  key($recode);
+                    $temp;
 
-                    $result = preg_replace("/^$removed/", ($added) ? $added : "", $result);
+                    foreach($recode as $raw_removed => $added) {
 
-                    echo "<br />Performing recoding = removed: $removed, added: $added";
-                    return $result;
+                        $removed = preg_replace("/[0-9]+/", "", $raw_removed);
+                        $temp = preg_replace("/^$removed/", ($added) ? $added : "", $result);
+                        echo "<br />Performing recoding = removed: $removed, added: $added => result: $temp";
+
+                        if($this->lookup($temp)) {
+                        
+                            $this->complex_prefix_tracker[$prefix] = array($removed => $added);
+                            return $temp;
+                        
+                        }
+
+                    }
+
+                    $result = $temp;
+
+                    
 
                 } else {
 

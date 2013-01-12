@@ -8,9 +8,9 @@
                         Rolando <rolando_kai@hotmail.com>
                         Stephen Hadisurja <stephen.hadisurja@gmail.com>
 
-        @version        0.4a-debug   [revision by David]
+        @version        0.5-debug   [revision by David]
 
-        @date           12 Jan 2013, 02:39
+        @date           12 Jan 2013, 23:18
 
         @description    @todo LOW - explain what all this fuzz is about. bla
                         bla bla bla.. lorem ipsum dolor sit amet
@@ -20,15 +20,19 @@
         TODO:
         ----
 
-        + suffix backtracking
         + Lookup function
-            > database lookup
-            > hyphenated words
             > [improvement] check lemma that consists of more that 1 word
-
 
         CHANGELOG:
         ---------
+        VERSION 0.5 - 12 Jan 2013 23:18
+        + ***TEMPORARY DISABLED DISALLOWED PREFIX***
+        + added lookup function
+        + added implementation docs for recoding function
+        + changed $original property to $found; also changed its role
+        + added backtracking feature
+        + modified main function parameter; added backtrack step
+
         VERSION 0.4-debug - 12 Jan 2013
         + [0.4a] hotfix for recoding function; enabled multiple recoding sources, and 
           optimized algorithm
@@ -133,11 +137,11 @@
         );
 
         /*
-            Serves as a container for the original input word
+            Serves as a container for successful dictionary lookup
 
             @var string
         */
-        protected $original;
+        protected $found = null;
 
         /*
             Tracks all the changes made to the word; The array is indexed by
@@ -166,7 +170,7 @@
         */
         public $recoding_tracker = array();
 
-        /**
+        /*
             Serves as the error indicator if a termination condition occurs.
             The conditions are:
                 > 'disallowed_confix':  the identified prefix forms a disallowed
@@ -174,18 +178,47 @@
                                         removed in previous steps.
                 > 'duplicate_prefix':   the identified prefix is identical to
                                         previously removd prefix.
-            
-            @todo LOW - what else?
+                > 'lemma_not_found'     the lemmatizer fails to detect input word.
 
             @var string
         */
-        protected $error;
+        public $error = null;
+
+        /*
+            Records how many lookups performed
+
+            @var integer
+        */
+        public $total_lookup = 0;
+
+
+        /*
+            Saves connection string to MySQL.
+            host: localhost
+            user: root
+            pass: <none>
+            
+            @var PDO Connection
+        */
+        protected $database;
+
 
         /*
         ********************************************************************************
         ***     METHODS
         ********************************************************************************
         */
+
+        /*
+            
+            Opens new database connection on instance construction
+
+        */
+        public function __construct() {
+
+            $this->database = new PDO("mysql:host=localhost;dbname=lemmatizer", "root", "");
+
+        }
 
         /**
             Checks the input word against the dictionary; returns the word if found,
@@ -203,12 +236,32 @@
                 This is still a test mode. Later on, the conditional
                 should contain a successful dictionary lookup.
             */
-            if(false) {
 
-                return $word;
+            if(strlen($word)<3) return false;
+
+             $check = $word;
+
+            if(preg_match("/^([a-z]+)-([a-z]+)$/", $check, $match)) {
+
+                if($match[1] == $match[2]) $check = $match[1];
+
+            }
+
+            $query = $this->database->query("SELECT lemma FROM dictionary WHERE lemma LIKE '$check'");
+
+            $this->total_lookup++;
+
+            if($row = $query->fetch()) {
+
+                // updates class property
+                $this->found = $row['lemma'];
+
+                // returns result to function caller
+                return $this->found;
 
             } else {
 
+                echo "<br />lookup failed!";
                 return false;
             }
 
@@ -235,8 +288,8 @@
 
             /*
                 Regular expression for affix pairs:
-                be - lah
-                be - an
+                ber - lah
+                ber - an
                 me - i
                 di - i
                 pe - i
@@ -245,8 +298,9 @@
                 @var array list of strings
             */
             $patterns = array(
-                    0 => "/^(be)[^r]{$alpha}([^k]an|lah)$/",
-                    1 => "/^(me|di|pe|ter){$alpha}i$/"
+                    0 => "/^ber{$alpha}([^k]an|lah)$/",
+                    1 => "/^(me|di|pe|te){$alpha}(i)$/",
+                    2 => "/^pem{$alpha}an$/"
                 );
 
             /*
@@ -289,7 +343,6 @@
                 se - i and kan
                 di - an
                 te - an
-                pe - an
 
                 @var array list of strings
             */
@@ -305,16 +358,19 @@
                 affix pairs above; returns true if pattern is found, and false if not found
 
             */
-            if($this->removed["derivational_prefix"]!="" && $this->removed["derivational_suffix"]!="") {
-                foreach($this->removed["derivational_prefix"] as $prefix => $detail) {
+            if($this->complex_prefix_tracker && $this->removed["derivational_suffix"]!="") {
 
-                    foreach($patterns as $pattern) {
+                $prefix_set = end($this->complex_prefix_tracker);
 
-                        if(preg_match($pattern, $prefix . $this->removed["derivational_suffix"])) return true;
+                $added = end($prefix_set);
+                $removed = key($prefix_set);
 
-                    }
+                foreach($patterns as $pattern) {
+
+                    if(preg_match($pattern, $removed . $this->removed["derivational_suffix"])) return true;
 
                 }
+
             }
             
             // no disallowed pairs found, good to go    
@@ -369,14 +425,6 @@
 
                 // Updates the removed value holder
                 $this->removed['particle'] = $match[0];
-
-                /**
-
-                    @discussion	    dictionary lookup is not performed in this part,
-                                    because we are following Arifin (2009)'s algorithm which 
-                                    will initiate suffix backtracking [in case of overstemming]
-
-                **/
 
             } 
 
@@ -433,20 +481,6 @@
                 // Updates the removed value holder
                 $this->removed['derivational_suffix'] = $match[0];
 
-            }
-
-
-            /*
-                
-                Performs check whether the removed prefix and suffix forms 
-                a disallowed pair
-
-            */
-            if($this->has_disallowed_confix()) {
-
-                $error = "disallowed_confix";
-                return false;
-                
             }
 
             echo "<br />Derivational suffix removal output: $result";
@@ -695,7 +729,7 @@
                                 $result = preg_replace("/^ter/", "", $result);
 
                                 // save prefix changes
-                                $this->complex_prefix_tracker[$prefix] = array("ter" => "");
+                                $modification = array("ter" => "");
 
                                 // save recoding path
                                 $this->recoding_tracker[$prefix] = array("te" => "");
@@ -712,7 +746,7 @@
                                 $result = preg_replace("/^ter/", "", $result);
 
                                 // save prefix changes
-                                $this->complex_prefix_tracker[$prefix] = array("ter" => "");
+                                $modification = array("ter" => "");
 
                             }
 
@@ -726,7 +760,7 @@
                                 $result = preg_replace("/^ter/", "", $result);
 
                                 // save prefix changes
-                                $this->complex_prefix_tracker[$prefix] = array("ter" => "");
+                                $modification = array("ter" => "");
 
                             }
 
@@ -740,7 +774,7 @@
                                 $result = preg_replace("/^te/", "", $result);
 
                                 // save prefix changes
-                                $this->complex_prefix_tracker[$prefix] = array("te" => "");
+                                $modification = array("te" => "");
 
                             }
 
@@ -1219,20 +1253,6 @@
 
                     array_push($this->removed['derivational_prefix'], $prefix);
 
-
-                    /*
-                        
-                        Performs check whether the removed prefix and suffix forms 
-                        a disallowed pair
-
-                    */
-                    if($this->has_disallowed_confix()) {
-
-                        $error = "disallowed_confix";
-                        return false;
-
-                    }
-
                     echo "<br />Derivational prefix removal output: $result";
 
                     // once the prefix is removed, we need to enter next iteration.
@@ -1248,11 +1268,9 @@
 
         }
 
-        /**
+        /*
             Performs recoding on input word 
             (provided there are recoding paths available)
-            
-            @todo implementation documentation
 
             @param string $word
             @return mixed
@@ -1267,48 +1285,121 @@
             */
             $result = $word;      
 
-
+            /*
+                Holds the reversed version of prefix tracker; because it is used
+                to return previously removed prefixes.
+                
+                @var array
+            */
             $prefixes = array_reverse($this->complex_prefix_tracker);
 
+
+            /*
+                
+                For each iteration, check whether the prefix has recoding path(s).
+                If recoding path is found, then it will be applied
+
+            */
             foreach($prefixes as $prefix => $changes) {
 
+                /* 
+
+                    Checks whether the current prefix has available recoding path,
+                    stored in a variable
+
+                    @var array
+                */
                 $recode = $this->recoding_tracker[$prefix];
 
+                /* 
+                    fetch the added value when removing this prefix
+
+                    @var string
+                */
                 $prefix_added = reset($changes);
+
+                /* 
+                    fetch the removed value when removing this prefix
+
+                    @var string
+                */
                 $prefix_removed = key($changes);
 
 
+                /*
+
+                    If something was added in the process of current prefix's removal,
+                    then it will be removed; and replaced with the removed value.
+
+                */
                 if($prefix_added!="") {
 
+                    // replace the added value with the removed value
                     $result = preg_replace("/^$prefix_added/", $prefix_removed, $result);
 
                 }
                 else {
 
+                    // prepend the removed value to current word
                     $result = $prefix_removed . $result;
                 }
 
                 echo "<br /><br />Detected prefix = removed: $prefix_removed, added: $prefix_added";            
 
+                /*
+
+                    If a recoding path is available, then it will be checked whether
+                    there are more than one path. For every path, the word is configured
+                    with the recoding path, and checked against the database.
+
+                */ 
                 if($recode!="") {
 
+                    /*
+                        Temporary variable for storing word changes; used for checking
+                        and lookup
+
+                        @var string
+                    */
                     $temp;
 
                     foreach($recode as $raw_removed => $added) {
 
+                        /*
+                            There are some cases where the recoding path is more than
+                            one, and both have identical removed value; because this
+                            can cause duplicate array keys (which will lead to overwriting),
+                            some rules are appended with numbers. Before the removed value
+                            is stored, it removes any number appended in the value
+    
+                            @var string
+                        */
                         $removed = preg_replace("/[0-9]+/", "", $raw_removed);
+
+                        // Attempts to apply recoding path.
                         $temp = preg_replace("/^$removed/", ($added) ? $added : "", $result);
+
                         echo "<br />Performing recoding = removed: $removed, added: $added => result: $temp";
 
+                        /*
+                            
+                            Performs dictionary lookup. If found, this will return the lookup result,
+                            and updates class' property: $found
+
+                        */
                         if($this->lookup($temp)) {
-                        
+                            
+                            // updates the prefix tracker value
                             $this->complex_prefix_tracker[$prefix] = array($removed => $added);
+
+                            // returns the result
                             return $temp;
                         
                         }
 
                     }
 
+                    // updates result variable for next iteration
                     $result = $temp;
 
                     
@@ -1322,6 +1413,7 @@
 
             echo "<br />No recoding path found for this word...";
 
+            // If recoding is unsuccessful or does not exist, return initial word
             return $word;
 
         }
@@ -1331,18 +1423,18 @@
         
             @todo   LOW - description will be available later! (once most of the things are up.)
                     name is still a jest, of course. we'll come up with something better!
-
-            @debug  the implementation is still a debugging flow/procedure to test out things.
+        
+            @todo   LOW - implementation documentation for BACKTRACKING procedure (case 7)
 
         */
-        public function eat($word) {
+        public function eat($word, $backtrack_step = false) {
 
             /*
                 Serves as the container for prefix/suffix removal results
                 
                 @var string
             */
-            $result = $this->original = $word;
+            $result = $word;
 
             /*
                 Serves as the temporary variable; holds string if process works
@@ -1351,7 +1443,6 @@
                 @var mixed
             */
             $temp = $this->lookup($word);
-
 
             /*
                 
@@ -1375,19 +1466,30 @@
                 /*
 
                     STEP 2: function ordering based on rule precedence result
+                    identifies whether this is a backtrack step or not;
+                    if this is main step then perform rule precedence check
 
                 */
-                if($steps) {
+                if($backtrack_step) {
+
+                    $steps = array(5,6);
+
+                } else {
+
+                    if($steps) {
 
                     echo "Rule Order: 5,6,3,4,7";
                     $steps = array(5,6,3,4,7);
 
-                } else {
+                    } else {
 
-                    echo "Rule Order: 3,4,5,6,7";
-                    $steps = array(3,4,5,6,7);
+                        echo "Rule Order: 3,4,5,6,7";
+                        $steps = array(3,4,5,6,7);
+
+                    }
 
                 }
+                
 
                 foreach($steps as $step) {
 
@@ -1408,11 +1510,13 @@
                         // STEP 5: delete derivational prefix
                         case 5:
                             // records to variable to $temp for continued processing
+                            echo "<br />Entered prefix removal with: $result";
                             $temp = $result;
 
                             // the iteration is done for maximum three times
                             for($i=0; $i<3; $i++) {
                                 
+                                echo "<br />entering loop {$i}";
                                 /*
                                     Temporary variable; holds the value before the word
                                     undergoes derivation prefix removal. Used for comparison,
@@ -1424,6 +1528,13 @@
 
                                 // delete derivational prefix
                                 $temp = $this->delete_derivational_prefix($temp);
+
+                                // if($this->has_disallowed_confix()) {
+
+                                //     echo "<br />Disallowed Confix<br />";
+                                //     break 3;
+
+                                // }
 
                                 // if there are any errors, or no prefix was removed, then quit loop
                                 if($temp==false || $this->error) break 3;
@@ -1437,6 +1548,15 @@
 
                             echo "<br />End of derivational prefix loop";
 
+                             /*
+                                
+                                Performs check whether the removed prefix and suffix forms 
+                                a disallowed pair
+
+                            */
+                            
+
+
                             break;
 
                         // STEP 6: perform recoding
@@ -1444,12 +1564,109 @@
                             $temp = $this->recode($result);
                             break;
 
+                        /**
+                            
+                            @todo implementation docs for backtracking
+
+                        */
                         // STEP 7: perform suffix backtracking
                         case 7:
-                            // @todo  backtracking
+
+                            echo "<br />Entering backtrack procedure for: $temp<br />";
+
+                            $prefixes = array_reverse($this->complex_prefix_tracker);
+
+
+                            foreach($prefixes as $prefix => $changes) {
+
+                                $prefix_added = reset($changes);
+                                $prefix_removed = key($changes);
+
+                                echo "appended $prefix_removed-...<br />";
+
+                                if($prefix_added!="") {
+
+                                    $temp = preg_replace("/^$prefix_added/", $prefix_removed, $temp);
+
+                                }
+                                else {
+
+                                    $temp = $prefix_removed . $temp;
+                                }
+                            }
+
+                            echo "exited prefix return";
+
+                            $this->removed["derivational_prefix"] = "";
+                            $this->complex_prefix_tracker = array();
+                            $backtrack = $this->eat($temp, true);
+
+                            if($backtrack == false || $this->error) break;
+                            else if($check = $this->lookup($backtrack)) return $check;
+
+
+                            // return derivational suffix
+                            if($this->removed['derivational_suffix']!="") {
+
+                                echo "<br /><b>BACKTRACK: RESTORING derivational_suffix..</b>";
+
+                                $temp = $temp . $this->removed["derivational_suffix"];
+                                $this->removed["derivational_prefix"] = array();
+                                $this->complex_prefix_tracker = array();
+                                $backtrack = $this->eat($temp, true);
+                                if($backtrack == false || $this->error) break;
+                                else if($check = $this->lookup($backtrack)) return $check;
+
+                            }
+
+                            // return possessive pronoun
+                            if($this->removed["possessive_pronoun"]!="") {
+
+                                echo "<br /><b>BACKTRACK: RESTORING possessive_pronoun</b>";
+
+                                $temp = $temp . $this->removed["possessive_pronoun"];
+                                $this->removed["derivational_prefix"] = array();
+                                $this->complex_prefix_tracker = array();
+                                $backtrack = $this->eat($temp, true);
+                                if($backtrack == false || $this->error) break;
+                                else if($check = $this->lookup($backtrack)) return $check;
+
+                            }
+
+                            // return particle
+                            if($this->removed["particle"]!="") {
+
+                                echo "<br /><b>BACKTRACK: RESTORING particle..</b>";
+
+                                $temp = $temp . $this->removed["particle"];
+                                $this->removed["derivational_prefix"] = array();
+                                $this->complex_prefix_tracker = array();
+                                $backtrack = $this->eat($temp, true);
+                                if($backtrack == false || $this->error) break;
+                                else if($check = $this->lookup($backtrack)) return $check;
+
+                            }
+
+                            echo "<br /><b>end of suffix backtrack</b><br />";
 
                     }
 
+                    /*
+
+                         If the lookup already succeeded from previous result, 
+                         then directly return the result
+
+                    */
+                    if($this->error) return $word;
+                    else if($this->found) return $this->found;
+
+                    /*
+                        
+                        Performs a dictionary lookup, for the word produced from 
+                        each steps above EXCEPT for step 5; in Step 5 the lookup
+                        has been performed.
+
+                    */
                     if($step!=5) {
 
                        if($temp) echo "<br />Perform checking procedure... temp: $temp";
@@ -1476,9 +1693,7 @@
                     are considered 'undone'; for better semantics
 
                 */
-                $this->recoding_tracker = array();
-                $this->complex_prefix_tracker = array();
-                $this->removed = array();
+                if(!$backtrack_step) if(!$this->error) $this->error = "lemma_not_found";
                 return $word;
 
         	}
@@ -1497,6 +1712,17 @@
             return $this->removed;
 
         }
+
+        /*
+
+            Closes database connection on instance destruction.
+        
+        */
+        public function __destruct() {
+
+            $this->database = null;
+
+        }
     }
     // end of class Lemmatizer
 
@@ -1507,19 +1733,21 @@
         TESTING / DEBUG LINES
 
     **/
+
+    $start = microtime(true);
     $subject = "percobaannyalah";
     $lemmatizer = new Lemmatizer;
 
-    if(isset($_GET['word']) && preg_match("/^[a-z]+-?[a-z]*$/", $_GET['word'])) $subject = $_GET['word'];
+    if(isset($_GET['word']) && preg_match("/^[a-zA-Z]+-?[a-zA-Z]*$/", $_GET['word'])) $subject = strtolower($_GET['word']);
  
     echo "<form action='#' method='GET'><input type='text' name='word' /><input type='submit' value='Lemmatize' /></form><hr />";
     echo "Input: <strong>$subject</strong><br />";
     $result = $lemmatizer->eat($subject);
-    echo '<br /><br />Result: ' . $result ? $result : "false";
     $removed = $lemmatizer->getRemoved();
+    echo "<br />";
     foreach($removed as $key => $affix) {
 
-        if($key == "derivational_prefix") {
+        if($key == "derivational_prefix" && $affix!='') {
 
             echo "<br />Removed $key : ";
             foreach($lemmatizer->complex_prefix_tracker as $array) {
@@ -1537,3 +1765,17 @@
         }
 
     }
+
+    $result = (!$lemmatizer->error) ? $result : "$result ($lemmatizer->error)";
+    echo "<br /><br /><hr />Result: <b>$result</b><br />Total query performed: $lemmatizer->total_lookup<br />";
+
+    echo "Lemmatization took " . round((microtime(true) - $start),4) . " seconds.";
+
+    $first = "([bcdfghjklmnpqrstvwxyz]|sy)?";
+    $last = "([bcdfghjklmnpqrstvwxyz]|ng)?";
+    $reg = "/^(?<first_word>$first([aiueo])$last$first([aiueo])$last)(?<second_word>$first([aiueo])$last$first([aiueo])$last(?U)($first([aiueo])$last)*)$/";
+    if(preg_match($reg, "tanggungjawab", $match)) {
+        echo "<br /><br />";
+        echo $match['first_word']." ".$match['second_word'];
+    }
+        

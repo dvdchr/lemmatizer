@@ -8,9 +8,9 @@
                         Rolando <rolando_kai@hotmail.com>
                         Stephen Hadisurja <stephen.hadisurja@gmail.com>
 
-        @version        0.5-debug   [revision by David]
+        @version        0.5a-debug   [revision by David]
 
-        @date           12 Jan 2013, 23:18
+        @date           13 Jan 2013, 00:59
 
         @description    @todo LOW - explain what all this fuzz is about. bla
                         bla bla bla.. lorem ipsum dolor sit amet
@@ -26,7 +26,9 @@
         CHANGELOG:
         ---------
         VERSION 0.5 - 12 Jan 2013 23:18
-        + ***TEMPORARY DISABLED DISALLOWED PREFIX***
+        + [0.5a] hotfixed + reenabled disallowed prefix
+
+        + temporary disabled disallowed prefix
         + added lookup function
         + added implementation docs for recoding function
         + changed $original property to $found; also changed its role
@@ -173,7 +175,7 @@
         /*
             Serves as the error indicator if a termination condition occurs.
             The conditions are:
-                > 'disallowed_confix':  the identified prefix forms a disallowed
+                > 'disallowed_pairs':   the identified prefix forms a disallowed
                                         affix combination with suffix that was 
                                         removed in previous steps.
                 > 'duplicate_prefix':   the identified prefix is identical to
@@ -224,7 +226,7 @@
             Checks the input word against the dictionary; returns the word if found,
             or returns false if not found
 
-            @debug 	the function is still in debug mode.
+            @debug  the function is still in debug mode.
 
             @param string $word
             @return mixed
@@ -247,8 +249,10 @@
 
             }
 
-            $query = $this->database->query("SELECT lemma FROM dictionary WHERE lemma LIKE '$check'");
+            // executes lemma from database
+            $query = $this->database->query("SELECT * FROM dictionary WHERE lemma LIKE '$check'");
 
+            // updates total dictionary lookup counter
             $this->total_lookup++;
 
             if($row = $query->fetch()) {
@@ -261,7 +265,6 @@
 
             } else {
 
-                echo "<br />lookup failed!";
                 return false;
             }
 
@@ -298,9 +301,9 @@
                 @var array list of strings
             */
             $patterns = array(
-                    0 => "/^ber{$alpha}([^k]an|lah)$/",
+                    0 => "/^be{$alpha}(an|lah)$/",
                     1 => "/^(me|di|pe|te){$alpha}(i)$/",
-                    2 => "/^pem{$alpha}an$/"
+                    2 => "/^(k|s)e{$alpha}(i|kan)$/"
                 );
 
             /*
@@ -326,7 +329,7 @@
 
             @return boolean
         */
-        protected function has_disallowed_confix() {
+        protected function has_disallowed_pairs() {
 
             /*
                 Loads normalized alphabet regex (including stripes) from class' [constant]; 
@@ -358,19 +361,15 @@
                 affix pairs above; returns true if pattern is found, and false if not found
 
             */
-            if($this->complex_prefix_tracker && $this->removed["derivational_suffix"]!="") {
+            if($this->removed["derivational_prefix"]!="" && $this->removed["derivational_suffix"]!="") {
 
-                $prefix_set = end($this->complex_prefix_tracker);
-
-                $added = end($prefix_set);
-                $removed = key($prefix_set);
+                $prefix = reset($this->removed["derivational_prefix"]);
 
                 foreach($patterns as $pattern) {
 
-                    if(preg_match($pattern, $removed . $this->removed["derivational_suffix"])) return true;
+                    if(preg_match($pattern, $prefix . $this->removed["derivational_suffix"])) return true;
 
                 }
-
             }
             
             // no disallowed pairs found, good to go    
@@ -620,7 +619,7 @@
                                             > Place [lookup] function
                                             > Structure removal history for recoding
 
-                    	*/
+                        */
 
                         /*
                             Temporary single-member array, used to hold complex prefix transformations
@@ -1264,7 +1263,7 @@
 
             echo "<br />No derivational prefix removal found: $result";
             // if no prefix found, return original word instead
-        	return $result;
+            return $result;
 
         }
 
@@ -1524,17 +1523,26 @@
 
                                     @var string
                                 */
+
+
                                 $previous = $temp;
 
                                 // delete derivational prefix
                                 $temp = $this->delete_derivational_prefix($temp);
 
-                                // if($this->has_disallowed_confix()) {
 
-                                //     echo "<br />Disallowed Confix<br />";
-                                //     break 3;
+                                /*
 
-                                // }
+                                    Checks for disallowed affix combination
+
+                                */
+                                if($i==0 && $this->has_disallowed_pairs()) {
+
+                                    $this->error = "disallowed_pairs";
+                                    echo "<br />Disallowed Confix<br />";
+                                    break;
+
+                                }
 
                                 // if there are any errors, or no prefix was removed, then quit loop
                                 if($temp==false || $this->error) break 3;
@@ -1554,8 +1562,6 @@
                                 a disallowed pair
 
                             */
-                            
-
 
                             break;
 
@@ -1602,7 +1608,6 @@
                             $backtrack = $this->eat($temp, true);
 
                             if($backtrack == false || $this->error) break;
-                            else if($check = $this->lookup($backtrack)) return $check;
 
 
                             // return derivational suffix
@@ -1615,7 +1620,6 @@
                                 $this->complex_prefix_tracker = array();
                                 $backtrack = $this->eat($temp, true);
                                 if($backtrack == false || $this->error) break;
-                                else if($check = $this->lookup($backtrack)) return $check;
 
                             }
 
@@ -1629,7 +1633,6 @@
                                 $this->complex_prefix_tracker = array();
                                 $backtrack = $this->eat($temp, true);
                                 if($backtrack == false || $this->error) break;
-                                else if($check = $this->lookup($backtrack)) return $check;
 
                             }
 
@@ -1643,7 +1646,6 @@
                                 $this->complex_prefix_tracker = array();
                                 $backtrack = $this->eat($temp, true);
                                 if($backtrack == false || $this->error) break;
-                                else if($check = $this->lookup($backtrack)) return $check;
 
                             }
 
@@ -1667,7 +1669,7 @@
                         has been performed.
 
                     */
-                    if($step!=5) {
+                    if($step!=5 && $step!=6) {
 
                        if($temp) echo "<br />Perform checking procedure... temp: $temp";
                         else echo "<br />temp = false! error: $this->error";
@@ -1696,7 +1698,7 @@
                 if(!$backtrack_step) if(!$this->error) $this->error = "lemma_not_found";
                 return $word;
 
-        	}
+            }
 
         }
 

@@ -8,23 +8,33 @@
                         Rolando <rolando_kai@hotmail.com>
                         Stephen Hadisurja <stephen.hadisurja@gmail.com>
 
-        @version        0.5a-debug   [revision by David]
+        @version        0.6-debug   [revision by David]
 
-        @date           13 Jan 2013, 00:59
+        @date           15 Jan 2013, 03:02
 
         @description    @todo LOW - explain what all this fuzz is about. bla
                         bla bla bla.. lorem ipsum dolor sit amet
 
         -------------------------------------------------------------------
+    
+        FAILED CASES:
+        ------------
+        + berupa (overstemming)
+        + menyatakan, penyanyi (incomplete rule) DONE (rule addition)
 
-        TODO:
-        ----
-
-        + Lookup function
-            > [improvement] check lemma that consists of more that 1 word
 
         CHANGELOG:
         ---------
+        VERSION 0.6 - 15 Jan 2013 03:02
+        + removed TODO List for now
+        + added 'FAILED CASES' section for better accuracy improvement
+        + added few comments here and there
+        + optimized lookup function
+        + optimized query calls
+        + added prefix stacking/combination constraint
+        + modified recoding path order for rule 16 & 28
+        + modified rule 19 & 31 for lemmas like 'nyanyi', 'nyata'
+
         VERSION 0.5 - 12 Jan 2013 23:18
         + [0.5a] hotfixed + reenabled disallowed prefix
 
@@ -178,8 +188,6 @@
                 > 'disallowed_pairs':   the identified prefix forms a disallowed
                                         affix combination with suffix that was 
                                         removed in previous steps.
-                > 'duplicate_prefix':   the identified prefix is identical to
-                                        previously removd prefix.
                 > 'lemma_not_found'     the lemmatizer fails to detect input word.
 
             @var string
@@ -205,6 +213,8 @@
         protected $database;
 
 
+        private $time;
+
         /*
         ********************************************************************************
         ***     METHODS
@@ -220,37 +230,87 @@
 
             $this->database = new PDO("mysql:host=localhost;dbname=lemmatizer", "root", "");
 
+            $this->time = microtime(true);
+
         }
 
-        /**
+        /*
             Checks the input word against the dictionary; returns the word if found,
             or returns false if not found
-
-            @debug  the function is still in debug mode.
 
             @param string $word
             @return mixed
         */
         protected function lookup($word) {
 
-            /**
-                NOTE
-                This is still a test mode. Later on, the conditional
-                should contain a successful dictionary lookup.
-            */
-
+            // If the input word's length is smaller then 3, don't bother.
             if(strlen($word)<3) return false;
 
-             $check = $word;
+            echo "<br /><u>Dictionary Lookup</u>...";
 
+            /*
+                Saves input word for further processing
+
+                @var string
+            */
+            $check = $word;
+
+            /*
+                Saves query result from PDO Query
+
+                @var string
+            */
+            $query_string;
+
+
+            /*
+                
+                Checks for repeated form that represents pluralized form;
+                for example 'buku-buku'
+
+            */
             if(preg_match("/^([a-z]+)-([a-z]+)$/", $check, $match)) {
 
                 if($match[1] == $match[2]) $check = $match[1];
 
             }
 
-            // executes lemma from database
-            $query = $this->database->query("SELECT * FROM dictionary WHERE lemma LIKE '$check'");
+
+            /*
+                    
+                    Attempts to programatically split joined words, in order to produce lemmas with
+                    more than one word. The split method only works when the first word contains 2 syllables.
+
+            */
+            if(strlen($word) <= 6) {
+
+                // executes lemma from database
+                $query_string = "'$check'";
+            
+            }
+            else {
+
+               // regex string for a valid Indonesian syllable
+                $syllable = "([bcdfghjklmnpqrstvwxyz]|sy)?([aiueo])(?U)([bcdfghjklmnpqrstvwxyz]|ng)?";
+                
+                // regex string for identifying the two words.
+                $reg = "/^(?<first>aneka|({$syllable}{$syllable}))(?<second>{$syllable}{$syllable}(?U)({$syllable})*)$/";
+                
+                if(preg_match($reg, $word, $match)) {
+
+                    echo "<br />Split result: " . $match['first'] . " " . $match['second'];
+
+                    // Performs query via PDO
+                    $query_string = "'".$match['first']." ".$match['second']."' OR lemma LIKE '$check'";
+
+                } else {
+
+                    $query_string = "'$check'";
+
+                }
+            }
+            
+            $query = $this->database->query("SELECT * FROM dictionary WHERE lemma LIKE $query_string LIMIT 1");
 
             // updates total dictionary lookup counter
             $this->total_lookup++;
@@ -260,10 +320,14 @@
                 // updates class property
                 $this->found = $row['lemma'];
 
+                echo " <strong>Lookup Success!</strong>";
+
                 // returns result to function caller
                 return $this->found;
 
             } else {
+
+                echo " failed.";
 
                 return false;
             }
@@ -301,8 +365,8 @@
                 @var array list of strings
             */
             $patterns = array(
-                    0 => "/^be{$alpha}(an|lah)$/",
-                    1 => "/^(me|di|pe|te){$alpha}(i)$/",
+                    0 => "/^be{$alpha}([^k]an|lah)$/",
+                    1 => "/^(me|di|pe|te){$alpha}(i|an)$/",
                     2 => "/^(k|s)e{$alpha}(i|kan)$/"
                 );
 
@@ -352,7 +416,7 @@
             $patterns = array(
                 0 => "/^bei$/",
                 1 => "/^(k|s)e(i|kan)$/",
-                2 => "/^(di|me|te)an$/"
+                2 => "/^(di|me|te)[^krwylp]an$/"
             );
 
             /*
@@ -367,8 +431,10 @@
 
                 foreach($patterns as $pattern) {
 
-                    if(preg_match($pattern, $prefix . $this->removed["derivational_suffix"])) return true;
-
+                    if(preg_match($pattern, $prefix . $this->removed["derivational_suffix"])) {
+                        $this->error = "disallowed_prefix";
+                        return true;
+                    }
                 }
             }
             
@@ -396,20 +462,15 @@
             $result = $word;
 
             /*
-                Regular expression for Particle suffixes:
-                (-kah, -lah, -tah, -pun)
+                Regular expression for Particle suffixes: (-kah, -lah, -tah, -pun)
+                and Possessive Pronoun suffixes (-ku, -mu, -nya)
 
-                @var string
+                @var array
             */
-            $particle = "/([klt]ah|pun)$/";
-
-            /*
-                Regular expression for Possessive Pronoun suffixes:
-                (-ku, -mu, -nya)
-
-                @var string
-            */
-            $possessive_pronoun = "/([km]u|nya)$/";
+            $patterns = array(
+                    'particle' => "/([klt]ah|pun)$/",
+                    'possessive_pronoun' => "/([km]u|nya)$/"
+                );
 
             /*
 
@@ -418,25 +479,27 @@
                 can be stacked, e.g. "mobilnyapun"
 
             */
-            if(preg_match($particle, $result, $match)) {
+            foreach($patterns as $key => $pattern) {
 
-                $result = preg_replace($particle, '', $result);
+                if(preg_match($pattern, $result, $match)) {
 
-                // Updates the removed value holder
-                $this->removed['particle'] = $match[0];
+                    $result = preg_replace($pattern, '', $result);
 
-            } 
+                    // Updates the removed value holder
+                    $this->removed[$key] = $match[0];
 
-            if(preg_match($possessive_pronoun, $result, $match)) {
+                    // Perform database lookup
+                    $check = $this->lookup($result);
 
-                $result = preg_replace($possessive_pronoun, '', $result);
+                    // If a lemma is successfully found, return it.
+                    if($check) return $check;
 
-                // Updates the removed value holder
-                $this->removed['possessive_pronoun'] = $match[0];
+                } 
 
             }
 
-            echo "<br />Inflectional suffix removal output: $result";
+            echo "<br />Inflectional suffix Removal output: <strong>$result</strong>";
+
             // returns the suffix removal result
             return $result;
 
@@ -475,14 +538,21 @@
             */
             if(preg_match($derivational_suffix, $result, $match)) {
 
+                // Removes the derivational suffix from given word
                 $result = preg_replace($derivational_suffix, '', $result);
 
                 // Updates the removed value holder
                 $this->removed['derivational_suffix'] = $match[0];
 
+                // Perform database lookup
+                $check = $this->lookup($result);
+
+                // If a lemma is successfully found, return it.
+                if($check) return $check;
+
             }
 
-            echo "<br />Derivational suffix removal output: $result";
+            echo "<br />Derivational Suffix Removal output: <strong>$result</strong>";
             return $result;
 
         }
@@ -557,6 +627,16 @@
                     'complex' => "/^(b|m|p|t)e/"
                 );
 
+            /*
+                
+                A check is performed; if the input word has less than four characters,
+                then the prefix removal process will be skipped.
+
+            */
+            if(strlen($result)< 4) {
+                return $result;
+            }
+
 
             foreach($patterns as $key => $pattern) {
 
@@ -571,20 +651,15 @@
 
                     /*
                         
-                        Performs check whether identified prefix is identical with other
-                        removed prefixes; returns false and updates the class error flag 
-                        if found
+                        Performs check whether identified prefix is identical with the
+                        previously removed prefixes; the prefix removal process will be
+                        terminated here if duplicate prefix detected.
 
                     */
                     if($this->removed["derivational_prefix"]!="" && in_array($prefix, $this->removed["derivational_prefix"])) {
 
-                        $this->error = "duplicate_prefix";
-                        return false;
-
-                    }
-
-                    if(strlen($result)< 4) {
                         return $result;
+
                     }
 
 
@@ -604,22 +679,14 @@
                     */
                     if($type) {
 
+                        $array = $this->removed['derivational_prefix'];
+
                         $result = preg_replace($pattern, '', $result);
 
                         // save modification changes to prefix tracker
                         $this->complex_prefix_tracker[$prefix] = array($prefix => "");
 
                     } else {
-
-                        /**
-
-                            @todo     HIGH -  deletion process for complex derivational prefix:
-
-                                            > Rules Table for complex removal (a LOT to do!)
-                                            > Place [lookup] function
-                                            > Structure removal history for recoding
-
-                        */
 
                         /*
                             Temporary single-member array, used to hold complex prefix transformations
@@ -635,6 +702,36 @@
                         *************************************************************************/
 
                         if($prefix == "be") {
+
+                            /*
+                                
+                                If a prefix has been removed before, these rules check for
+                                combination, if it is an allowed type of combination or not.
+
+                            */
+                            if($this->removed['derivational_prefix']!="") {
+
+                                // Get the array value of first index
+                                $array = reset($this->complex_prefix_tracker);
+
+                                // Get the first index of modification value
+                                $added = reset($array);
+
+                                // pp: Previous Prefix; Get the key (removed part) of modification value
+                                $pp = key($array);
+                                
+                                /*
+
+                                    Allowed combinations:
+                                    diber-,
+                                    keber-,
+                                    member-,
+                                    pember
+                
+                                */
+                                if($pp!='mem' && $pp!='pem' && $pp!= 'di' && $pp!='ke') return $result;
+
+                            }
 
                             /*
                                 RULE 1
@@ -708,15 +805,58 @@
 
                             }
 
+                            /* 
+
+                                In this case, the rule is unsuccessful, therefore the
+                                original input word will be returned. The previously
+                                initialized recoding chars will also be unset. 
+
+                            */
+                            else {
+
+                                unset($this->recoding_tracker[$prefix]);
+
+                                return $word;
+                            }
+
                         }
                         
 
                         /*************************************************************************
                         **  "te-" PREFIX RULES
-                        **  total rule: 4
+                        **  total rule: 5
                         *************************************************************************/
                         
                         else if($prefix == "te") {
+
+                            /*
+                                
+                                If a prefix has been removed before, these rules check for
+                                combination, if it is an allowed type of combination or not.
+
+                            */
+                            if($this->removed['derivational_prefix']!="") {
+
+                                // Get the array value of first index
+                                $array = reset($this->complex_prefix_tracker);
+
+                                // Get the first index of modification value
+                                $added = reset($array);
+
+                                // pp: Previous Prefix; Get the key (removed part) of modification value
+                                $pp = key($array);
+                                
+                                /*
+                                
+                                    Allowed combinations:
+                                    ke-,
+                                    men- (special for tawa),
+                                    pen- (special for tawa)
+                
+                                */
+                                if($pp!='ke' && (($pp=='men' || $pp=='pen') && !preg_match('/tawa/', $result))) return $result;
+
+                            } else echo "EMPTY PREFIX BRO>>";
 
                             /*
                                 RULE 6
@@ -777,6 +917,34 @@
 
                             }
 
+                            /*
+                                RULE 10
+                                input: terC1erC2...
+                                output: ter-C1erC2... where C1!='r'
+                            */
+                            else if(preg_match("/^ter[bcdfghjklmnpqstvwxyz]er$consonant/", $result)) {
+
+                                $result = preg_replace("/^ter/", "", $result);
+
+                                // save prefix changes
+                                $modification = array("ter", "");
+
+                            }
+
+                            /* 
+
+                                In this case, the rule is unsuccessful, therefore the
+                                original input word will be returned. The previously
+                                initialized recoding chars will also be unset. 
+
+                            */
+                            else {
+
+                                unset($this->recoding_tracker[$prefix]);
+                                
+                                return $word;
+                            }
+
                         }
 
 
@@ -788,7 +956,15 @@
                         else if($prefix == "me") {
 
                             /*
-                                RULE 10
+                                
+                                This prefix cannot be a second-level prefix. If there is
+                                already a removed prefix, immediately return input word.
+
+                            */
+                            if($this->removed['derivational_prefix']!="") return $result;
+
+                            /*
+                                RULE 11
                                 input: me{l|r|w|y}V...
                                 output: me-{l|r|w|y}V...
                             */
@@ -802,7 +978,7 @@
                             }
 
                             /*
-                                RULE 11
+                                RULE 12
                                 input: mem{b|f|v}...
                                 output: mem-{b|f|v}...
                             */
@@ -816,7 +992,7 @@
                             }
 
                             /*
-                                RULE 12
+                                RULE 13
                                 input: mempe...
                                 output: mem-pe..
                             */
@@ -830,7 +1006,7 @@
                             }
 
                             /*
-                                RULE 13
+                                RULE 14
                                 input: mem{rV|V}...
                                 output:me-m{rV|V}... | me-p{rV|V}...
                             */
@@ -839,7 +1015,7 @@
                                 $result = preg_replace("/^me/", "", $result);
 
                                 // save prefix changes
-                                $modification = array("mem$match[1]" => "");
+                                $modification = array("me$match[1]" => "");
 
                                 // save recoding path
                                 $this->recoding_tracker[$prefix] = array("mem" => "p");
@@ -847,7 +1023,7 @@
                             }
 
                             /*
-                                RULE 14
+                                RULE 15
                                 input: men{c|d|j|s|z}...
                                 output:men-{c|dj|s|z}...
                             */
@@ -861,24 +1037,24 @@
                             }
 
                             /*
-                                RULE 15
+                                RULE 16
                                 input: menV...
-                                output:me-nV... | me-tV...
+                                output:me-tV... | me-nV...
                             */
                             else if(preg_match("/^men$vowel/", $result)) {
 
-                                $result = preg_replace("/^me/", "", $result);
+                                $result = preg_replace("/^men/", "t", $result);
 
                                 // save prefix changes
-                                $modification = array("me" => "");
+                                $modification = array("men" => "t");
 
                                 // save recoding path
-                                $this->recoding_tracker[$prefix] = array("men" => "t");
+                                $this->recoding_tracker[$prefix] = array("me" => "");
 
                             }
 
                             /*
-                                RULE 16
+                                RULE 17
                                 input: meng{g|h|q|k}...
                                 output: meng-{g|h|q|k}...
                             */
@@ -892,7 +1068,7 @@
                             }
 
                             /*
-                                RULE 17
+                                RULE 18
                                 input: mengV...
                                 output: meng-V... | meng-kV... | mengV-... if V='e'
                             */
@@ -922,9 +1098,9 @@
                             }
 
                             /*
-                                RULE 18
+                                RULE 19
                                 input: menyV...
-                                output: meny-sV...
+                                output: meny-sV... | me-nyV...
                             */
                             else if(preg_match("/^meny$vowel/", $result)) {
 
@@ -933,10 +1109,13 @@
                                 // save prefix changes
                                 $modification = array("meny" => "s");
 
+                                // save recoding path
+                                $this->recoding_tracker[$prefix] = array("me" => "");
+
                             }
 
                             /*
-                                RULE 19
+                                RULE 20
                                 input: mempA...
                                 output: mem-pA... where A!='e'
                             */
@@ -949,18 +1128,61 @@
 
                             }
 
+                            /* 
+
+                                In this case, the rule is unsuccessful, therefore the
+                                original input word will be returned. The previously
+                                initialized recoding chars will also be unset. 
+
+                            */
+                            else {
+
+                                unset($this->recoding_tracker[$prefix]);
+                                
+                                return $word;
+                            }
+
                         }
 
 
                         /*************************************************************************
                         **  "pe-" PREFIX RULES
-                        **  total rule: 16
+                        **  total rule: 15
                         *************************************************************************/
 
                         else if($prefix == "pe") {
 
                             /*
-                                RULE 20
+                                
+                                If a prefix has been removed before, these rules check for
+                                combination, if it is an allowed type of combination or not.
+
+                            */
+                            if($this->removed['derivational_prefix']!="") {
+
+                                // Get the array value of first index
+                                $array = reset($this->complex_prefix_tracker);
+
+                                // Get the first index of modification value
+                                $added = reset($array);
+
+                                // pp: Previous Prefix; Get the key (removed part) of modification value
+                                $pp = key($array);
+                                
+                                /*
+
+                                    Allowed combinations:
+                                    di-,
+                                    peN-,
+                                    mem-.
+                
+                                */
+                                if($pp!='di' && !preg_match('/^pe/', $pp) && $pp!= 'mem') return $result;
+
+                            }
+
+                            /*
+                                RULE 21
                                 input: pe{w|y}V...
                                 output: pe-{w|y}V...
                             */
@@ -974,7 +1196,7 @@
                             }
 
                             /*
-                                RULE 21
+                                RULE 22
                                 input: perV...
                                 output: per-V... | pe-rV...
                             */
@@ -991,7 +1213,7 @@
                             }
 
                             /*
-                                RULE 22 
+                                RULE 23
                                 input: perCAP...
                                 output: per-CAP... where C!='r' and P!='er'
                             */
@@ -1005,7 +1227,7 @@
                             }
 
                             /*
-                                RULE 23
+                                RULE 24
                                 input: perCAerV...
                                 output: per-CAerV... where C!= 'r'
                             */
@@ -1019,7 +1241,7 @@
                             }
 
                             /*
-                                RULE 24
+                                RULE 25
                                 input: pem{b|f|v}...
                                 output: pem-{b|f|v}...
                             */
@@ -1033,7 +1255,7 @@
                             }
 
                             /*
-                                RULE 25
+                                RULE 26
                                 input: pem{rV|V}...
                                 output: pe-m{rV|V}... | pe-p{rV|V}...
                             */
@@ -1050,7 +1272,7 @@
                             }
 
                             /*
-                                RULE 26
+                                RULE 27
                                 input: pen{c|d|j|z}...
                                 output: pen-{c|d|j|z}...
                             */
@@ -1064,24 +1286,24 @@
                             }
 
                             /*
-                                RULE 27
+                                RULE 28
                                 input: penV...
-                                output: pe-nV... | pe-tV... 
+                                output: pe-tV... | pe-nV... 
                             */
                             else if(preg_match("/^pen$vowel/", $result)) {
 
-                                $result = preg_replace("/^pe/", "", $result);
+                                $result = preg_replace("/^pen/", "t", $result);
 
                                 // save prefix changes
-                                $modification = array("pe" => "");
+                                $modification = array("pen" => "t");
 
                                 // save recoding path
-                                $this->recoding_tracker[$prefix] = array("pen" => "t");
+                                $this->recoding_tracker[$prefix] = array("pe" => "");
 
                             }
 
                             /*
-                                RULE 28
+                                RULE 29
                                 input: pengC...
                                 output: peng-C...
                             */
@@ -1095,7 +1317,7 @@
                             }
 
                             /*
-                                RULE 29
+                                RULE 30
                                 input: pengV...
                                 output: peng-V | peng-kV... | pengV-... if V='e'
                             */
@@ -1125,9 +1347,9 @@
                             }
 
                             /*
-                                RULE 30
+                                RULE 31
                                 input: penyV...
-                                output: peny-sV...
+                                output: peny-sV... | pe-nyV...
                             */
                             else if(preg_match("/^peny$vowel/", $result)) {
 
@@ -1136,10 +1358,13 @@
                                 // save prefix changes
                                 $modification = array("peny" => "s");
 
+                                // save recoding path
+                                $this->recoding_tracker[$prefix] = array("pe" => "");
+
                             }
 
                             /*
-                                RULE 31
+                                RULE 32
                                 input: pelV...
                                 output: pe-lV... | pel-V if 'pelajar'
                             */
@@ -1164,7 +1389,7 @@
                             }
 
                             /*
-                                RULE 32
+                                RULE 33
                                 input: peCerV...
                                 output: per-CerV... where C!={r|w|y|l|m|n}
                             */
@@ -1178,7 +1403,7 @@
                             }
 
                             /*
-                                RULE 33
+                                RULE 34
                                 input: peCP...
                                 output: pe-CP... where C!={r|w|y|l|m|n} and P!='er'
                             */
@@ -1188,20 +1413,6 @@
 
                                 // save prefix changes
                                 $modification = array("pe" => "");
-
-                            }
-
-                            /*
-                                RULE 34
-                                input: terC1erC2...
-                                output: ter-C1erC2... where C1!='r'
-                            */
-                            else if(preg_match("/^ter[bcdfghjklmnpqstvwxyz]er$consonant/", $result)) {
-
-                                $result = preg_replace("/^ter/", "", $result);
-
-                                // save prefix changes
-                                $modification = array("ter", "");
 
                             }
 
@@ -1219,9 +1430,30 @@
 
                             }
 
+                            /* 
+
+                                In this case, the rule is unsuccessful, therefore the
+                                original input word will be returned. The previously
+                                initialized recoding chars will also be unset. 
+
+                            */
+                            else {
+
+                                unset($this->recoding_tracker[$prefix]);
+                                
+                                return $word;
+                            }
+
+
                         }
 
+                        /*
+                            
+                            Moves the temporary saved modification to prefix tracker
+                            attribute (provided it's not null); If there is no modification
+                            detected, then the this process is terminated.
 
+                        */
                         if($modification!=null) {
 
                             // saves modification changes to prefix tracker
@@ -1229,17 +1461,15 @@
 
                         } else {
 
-                            break;
-                            echo "modification is null!<br />";
-                        
+                            // If there is no changes made, return original word.
+                            return $result;
+
                         }
                         
-
                     }
 
-
                     /*
-
+                        
                         Updates the removed value holder. Since derivational prefix
                         is stackable (up to 2), the value is kept in an array fashion
 
@@ -1250,9 +1480,14 @@
 
                     }
 
+                    // Adds the detected prefix type to the removed affix tracker.
                     array_push($this->removed['derivational_prefix'], $prefix);
 
+
                     echo "<br />Derivational prefix removal output: $result";
+
+                    // Performs dictionary lookup
+                    $this->lookup($result);
 
                     // once the prefix is removed, we need to enter next iteration.
                     return $result;
@@ -1276,7 +1511,7 @@
         */
         protected function recode($word) {
 
-            echo "<br />start of recoding..";
+            echo "<br />Entering recoding with <strong>$word</strong>...";
             /*
                 Holds the value after suffix removal process
 
@@ -1343,7 +1578,7 @@
                     $result = $prefix_removed . $result;
                 }
 
-                echo "<br /><br />Detected prefix = removed: $prefix_removed, added: $prefix_added";            
+                echo "<br />Detected prefix = removed: $prefix_removed, added: $prefix_added";            
 
                 /*
 
@@ -1477,22 +1712,26 @@
 
                     if($steps) {
 
-                    echo "Rule Order: 5,6,3,4,7";
+                    echo "<br />Rule Order: 5,6,3,4,7";
                     $steps = array(5,6,3,4,7);
 
                     } else {
 
-                        echo "Rule Order: 3,4,5,6,7";
+                        echo "<br />Rule Order: 3,4,5,6,7";
                         $steps = array(3,4,5,6,7);
 
                     }
 
                 }
                 
+                if(!$backtrack_step) {
+                    echo "<br />Preparation took <strong>" . round((microtime(true) - $this->time),4) . " seconds.</strong>";
+                    $this->time = microtime(true);
+                }
 
                 foreach($steps as $step) {
 
-                    echo "<br /><br />Executing rule $step...";
+                    echo "<br /><br />Running Step $step...";
 
                     switch($step) {
 
@@ -1513,7 +1752,7 @@
                             $temp = $result;
 
                             // the iteration is done for maximum three times
-                            for($i=0; $i<3; $i++) {
+                            for($i=0; $i<2; $i++) {
                                 
                                 echo "<br />entering loop {$i}";
                                 /*
@@ -1523,46 +1762,26 @@
 
                                     @var string
                                 */
-
-
                                 $previous = $temp;
 
                                 // delete derivational prefix
                                 $temp = $this->delete_derivational_prefix($temp);
 
-
                                 /*
 
-                                    Checks for disallowed affix combination
+                                    Checks for disallowed affix combination,
+                                    Checks if the lemma is already found,
+                                    Checks if the no prefix was removed, or the amount of prefixes removed are already 2.
 
                                 */
-                                if($i==0 && $this->has_disallowed_pairs()) {
-
-                                    $this->error = "disallowed_pairs";
-                                    echo "<br />Disallowed Confix<br />";
+                                if(($i==0 && $this->has_disallowed_pairs())
+                                    || $this->found
+                                    || $temp == $previous
+                                    || count($this->removed['derivational_prefix'])>2) 
+                                {
                                     break;
-
                                 }
-
-                                // if there are any errors, or no prefix was removed, then quit loop
-                                if($temp==false || $this->error) break 3;
-
-                                else if($temp == $previous) break;
-
-                                // performs lookup for every iteration
-                                else if($check = $this->lookup($temp)) return $check;
-
                             }
-
-                            echo "<br />End of derivational prefix loop";
-
-                             /*
-                                
-                                Performs check whether the removed prefix and suffix forms 
-                                a disallowed pair
-
-                            */
-
                             break;
 
                         // STEP 6: perform recoding
@@ -1581,7 +1800,6 @@
                             echo "<br />Entering backtrack procedure for: $temp<br />";
 
                             $prefixes = array_reverse($this->complex_prefix_tracker);
-
 
                             foreach($prefixes as $prefix => $changes) {
 
@@ -1607,50 +1825,73 @@
                             $this->complex_prefix_tracker = array();
                             $backtrack = $this->eat($temp, true);
 
-                            if($backtrack == false || $this->error) break;
-
+                            if($this->found) break;
 
                             // return derivational suffix
-                            if($this->removed['derivational_suffix']!="") {
+                            if(!$this->found && $this->removed['derivational_suffix']!="") {
 
-                                echo "<br /><b>BACKTRACK: RESTORING derivational_suffix..</b>";
+                                echo "<br /><strong>BACKTRACK: RESTORING derivational_suffix..</strong>";
 
-                                $temp = $temp . $this->removed["derivational_suffix"];
-                                $this->removed["derivational_prefix"] = array();
+                                if($this->removed['derivational_suffix'] == "kan") {
+
+                                    $temp = $temp . "k";
+                                    $this->removed["derivational_prefix"] = "";
+                                    $this->complex_prefix_tracker = array();
+                                    $backtrack = $this->eat($temp, true);
+
+                                    if($this->found) break;
+
+                                    $temp = $temp . "an";
+
+                                }
+                                else {
+
+                                    $temp = $temp . $this->removed["derivational_suffix"];
+                                    
+                                }
+                                
+                                $this->removed["derivational_prefix"] = "";
                                 $this->complex_prefix_tracker = array();
                                 $backtrack = $this->eat($temp, true);
-                                if($backtrack == false || $this->error) break;
 
                             }
 
                             // return possessive pronoun
-                            if($this->removed["possessive_pronoun"]!="") {
+                            if(!$this->found && $this->removed["possessive_pronoun"]!="") {
 
-                                echo "<br /><b>BACKTRACK: RESTORING possessive_pronoun</b>";
+                                echo "<br /><strong>BACKTRACK: RESTORING possessive_pronoun</strong>";
 
                                 $temp = $temp . $this->removed["possessive_pronoun"];
-                                $this->removed["derivational_prefix"] = array();
+                                $this->removed["derivational_prefix"] = "";
                                 $this->complex_prefix_tracker = array();
                                 $backtrack = $this->eat($temp, true);
-                                if($backtrack == false || $this->error) break;
+                                
+                                if($this->found) break;
 
                             }
 
                             // return particle
-                            if($this->removed["particle"]!="") {
+                            if(!$this->found && $this->removed["particle"]!="") {
 
-                                echo "<br /><b>BACKTRACK: RESTORING particle..</b>";
+                                echo "<br /><strong>BACKTRACK: RESTORING particle..</strong>";
 
                                 $temp = $temp . $this->removed["particle"];
-                                $this->removed["derivational_prefix"] = array();
+                                $this->removed["derivational_prefix"] = "";
                                 $this->complex_prefix_tracker = array();
                                 $backtrack = $this->eat($temp, true);
-                                if($backtrack == false || $this->error) break;
+                                
+                                if($this->found) break;
 
                             }
 
-                            echo "<br /><b>end of suffix backtrack</b><br />";
+                            echo "<br /><strong>end of suffix backtrack</strong>";
 
+                    }
+
+                    // time tracking
+                    if(!$backtrack_step) {
+                        echo "<br />Step $step took <strong>" . round((microtime(true) - $this->time),4) . " seconds.</strong>";
+                        $this->time = microtime(true);
                     }
 
                     /*
@@ -1659,35 +1900,14 @@
                          then directly return the result
 
                     */
-                    if($this->error) return $word;
-                    else if($this->found) return $this->found;
-
-                    /*
-                        
-                        Performs a dictionary lookup, for the word produced from 
-                        each steps above EXCEPT for step 5; in Step 5 the lookup
-                        has been performed.
-
-                    */
-                    if($step!=5 && $step!=6) {
-
-                       if($temp) echo "<br />Perform checking procedure... temp: $temp";
-                        else echo "<br />temp = false! error: $this->error";
-
-                        // if the suffix removal returned error, then exit immediately.
-                        if($temp==false || $this->error) return false;
-
-                        // performs database lookup; returns the word if found
-                        else if($check = $this->lookup($temp)) return $check;  
-                    }
-                    
+                    if($this->found) return $this->found;
 
                     // if the removal is success, proceed to next step
                     $result = $temp;
 
                 }
 
-                echo "<br /><br />Executing rule 8 (no lookup found)<br />";
+                echo "<br /><br />Executing rule 8 (no lookup found)";
                 /*
                     
                     STEP 8: if the dictionary lookup still fails, return original word.
@@ -1737,16 +1957,16 @@
     **/
 
     $start = microtime(true);
-    $subject = "percobaannyalah";
+    $subject = "pertanggungjawabannyalah";
     $lemmatizer = new Lemmatizer;
 
     if(isset($_GET['word']) && preg_match("/^[a-zA-Z]+-?[a-zA-Z]*$/", $_GET['word'])) $subject = strtolower($_GET['word']);
  
     echo "<form action='#' method='GET'><input type='text' name='word' /><input type='submit' value='Lemmatize' /></form><hr />";
-    echo "Input: <strong>$subject</strong><br />";
+    echo "Input: <strong>$subject</strong>";
     $result = $lemmatizer->eat($subject);
     $removed = $lemmatizer->getRemoved();
-    echo "<br />";
+    echo "<br /><br />";
     foreach($removed as $key => $affix) {
 
         if($key == "derivational_prefix" && $affix!='') {
@@ -1769,15 +1989,6 @@
     }
 
     $result = (!$lemmatizer->error) ? $result : "$result ($lemmatizer->error)";
-    echo "<br /><br /><hr />Result: <b>$result</b><br />Total query performed: $lemmatizer->total_lookup<br />";
+    echo "<br /><br /><hr />Result: <strong>$result</strong><br />Total query performed: $lemmatizer->total_lookup<br />";
 
     echo "Lemmatization took " . round((microtime(true) - $start),4) . " seconds.";
-
-    $first = "([bcdfghjklmnpqrstvwxyz]|sy)?";
-    $last = "([bcdfghjklmnpqrstvwxyz]|ng)?";
-    $reg = "/^(?<first_word>$first([aiueo])$last$first([aiueo])$last)(?<second_word>$first([aiueo])$last$first([aiueo])$last(?U)($first([aiueo])$last)*)$/";
-    if(preg_match($reg, "tanggungjawab", $match)) {
-        echo "<br /><br />";
-        echo $match['first_word']." ".$match['second_word'];
-    }
-        

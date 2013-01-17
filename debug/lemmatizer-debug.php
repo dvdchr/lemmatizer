@@ -8,7 +8,7 @@
                     Rolando <rolando_kai@hotmail.com>
                     Stephen Hadisurja <stephen.hadisurja@gmail.com>
 
-    @version        0.7   [revision by David]
+    @version        0.7-debug   [revision by David]
 
     @date           15 Jan 2013, 03:02
 
@@ -19,8 +19,6 @@
 
     FAILED CASES:
     ------------
-    + kepemilikan (possible rule issue)
-    + perbankan
     + bertingkah, bernaskah (rule precedence)
     + penyawaan, menyawakan (nyawa => sawa)
     + mengepakkan, kepakan, kepakkan (overstemming, rule precedence)
@@ -265,6 +263,7 @@ class Lemmatizer {
         // If the input word's length is smaller then 3, don't bother.
         if(strlen($word)<3) return false;
 
+        echo "Checking dictionary for <u>$word</u>... ";
 
         /*
             Saves input word for further processing
@@ -323,6 +322,8 @@ class Lemmatizer {
             
             if(preg_match($reg, $word, $match)) {
 
+                echo "<br />Split result: " . $match['first'] . " " . $match['second'] . "<br />";
+
                 // Performs query via PDO
                 $query_string = "'".$match['first']." ".$match['second']."' OR lemma LIKE '$check'";
 
@@ -363,11 +364,18 @@ class Lemmatizer {
 
         if($row = $query->fetch()) {
 
+            echo "Database: ". $row['lemma'];
             // updates class property
             $this->found = $row['lemma'];
 
+            echo "<strong>Lemma found!</strong><br />";
+
             // returns result to function caller
             return $this->found;
+
+        } else {
+
+            echo "Failed.<br />";
 
         }
 
@@ -407,7 +415,7 @@ class Lemmatizer {
                 0 => "/^be(?<word>{$alpha})([^k]an|lah)$/",
                 1 => "/^(me|di|pe|te)(?<word>{$alpha})(i)$/",
                 2 => "/^(k|s)e(?<word>{$alpha})(i|kan)$/",
-                3 => "/^(me|di|te|pe)(?<word>{$alpha})(an)$/",
+                3 => "/^(me|di|te|pe)(?<word>{$alpha})([^k]an)$/",
                 4 => "/^pe(?<word>{$alpha}(tah|[^k]an))/"
             );
 
@@ -540,6 +548,8 @@ class Lemmatizer {
 
         }
 
+        echo "Inflectional suffix Removal output: <strong>$result</strong><br />";
+
         // returns the suffix removal result
         return $result;
 
@@ -592,6 +602,7 @@ class Lemmatizer {
 
         }
 
+        echo "Derivational Suffix Removal output: <strong>$result</strong><br />";
         return $result;
 
     }
@@ -1126,6 +1137,27 @@ class Lemmatizer {
                             // save recoding path 
                             $this->recoding_tracker[$prefix] = array("meng1" => "k");
                             $this->recoding_tracker[$prefix]["menge"] = "";
+
+                            // if($match[1] == 'e') {
+
+                            //     $result = preg_replace("/^menge/", "", $result);
+
+                            //     // save prefix changes
+                            //     $modification = array("menge" => "");
+
+                            //     $this->recoding_tracker[$prefix] = array("meng1" => "");
+                            //     $this->recoding_tracker[$prefix]["meng2"] = "k";
+
+                            // } else {
+
+                            //     $result = preg_replace("/^meng/", "", $result);
+
+                            //     // save prefix changes
+                            //     $modification = array("meng" => "");
+
+                            //     // save recoding path
+                            //     $this->recoding_tracker[$prefix] = array("meng" => "k");    
+                            // }
                             
                         }
 
@@ -1528,6 +1560,8 @@ class Lemmatizer {
                 // Performs dictionary lookup
                 $this->lookup($result);
 
+                echo "Derivational prefix removal output: $result<br />";
+
                 // once the prefix is removed, we need to enter next iteration.
                 return $result;
 
@@ -1549,6 +1583,7 @@ class Lemmatizer {
     */
     protected function recode($word) {
 
+        echo "Checking recoding possibility for <strong>$word</strong>...<br />";
         /*
             Holds the value after suffix removal process
 
@@ -1612,7 +1647,9 @@ class Lemmatizer {
 
                 // prepend the removed value to current word
                 $result = $prefix_removed . $result;
-            }          
+            }
+
+            echo "Current prefix = remove: $prefix_added , add: $prefix_removed => result: $result<br />";             
 
             /*
 
@@ -1647,6 +1684,7 @@ class Lemmatizer {
                     // Attempts to apply recoding path.
                     $temp = preg_replace("/^$removed/", ($added) ? $added : "", $result);
 
+                    echo "Performing recoding = remove: $removed, add: $added => result: $temp<br />";
                     /*
                         
                         Performs dictionary lookup. If found, this will return the lookup result,
@@ -1661,9 +1699,15 @@ class Lemmatizer {
                         // returns the result
                         return $temp;
                     
+                    } else {
+
+                        echo "No recoding path found for this prefix. Continuing...<br />";
+
                     }
 
                 }
+
+                echo "No recoding path found for this word...<br />";
 
                 // updates result variable for next iteration
                 $result = $temp;
@@ -1737,10 +1781,12 @@ class Lemmatizer {
 
                 if($steps) {
 
+                    echo "Rule Order: 5,6,3,4,7<br /><br />";
                     $steps = array(5,6,3,4,7);
 
                 } else {
 
+                    echo "Rule Order: 3,4,5,6,7<br /><br />";
                     $steps = array(3,4,5,6,7);
 
                 }
@@ -1748,6 +1794,8 @@ class Lemmatizer {
             }
 
             foreach($steps as $step) {
+
+                echo "Entering step $step with $result...<br />";
 
                 switch($step) {
 
@@ -1763,11 +1811,15 @@ class Lemmatizer {
 
                     // STEP 5: delete derivational prefix
                     case 5:
+
+                        echo "Entering prefix removal with $result...<br />";
                         // records to variable to $temp for continued processing
                         $temp = $result;
 
                         // the iteration is done for maximum three times
                         for($i=0; $i<3; $i++) {
+
+                            echo "entering loop {$i}<br />";
 
                             /*
                                 Temporary variable; holds the value before the word
@@ -1811,12 +1863,16 @@ class Lemmatizer {
                     // STEP 7: perform suffix backtracking
                     case 7:
 
+                        echo "Entering backtrack procedure for: $temp<br /><br />";
+
                         $prefixes = array_reverse($this->complex_prefix_tracker);
 
                         foreach($prefixes as $prefix => $changes) {
 
                             $prefix_added = reset($changes);
                             $prefix_removed = key($changes);
+
+                            echo "appended $prefix_removed-...<br />";
 
                             if($prefix_added!="") {
 
@@ -1829,6 +1885,8 @@ class Lemmatizer {
                             }
                         }
 
+                        echo "exited prefix return";
+
                         $this->removed["derivational_prefix"] = "";
                         $this->complex_prefix_tracker = array();
                         $backtrack = $this->eat($temp, true);
@@ -1837,6 +1895,8 @@ class Lemmatizer {
 
                         // return derivational suffix
                         if(!$this->found && $this->removed['derivational_suffix']!="") {
+
+                            echo "<br /><strong>BACKTRACK: RESTORING derivational_suffix..</strong>";
 
                             if($this->removed['derivational_suffix'] == "kan") {
 
@@ -1865,6 +1925,8 @@ class Lemmatizer {
                         // return possessive pronoun
                         if(!$this->found && $this->removed["possessive_pronoun"]!="") {
 
+                            echo "<br /><strong>BACKTRACK: RESTORING possessive_pronoun..</strong>";
+
                             $temp = $temp . $this->removed["possessive_pronoun"];
                             $this->removed["derivational_prefix"] = "";
                             $this->complex_prefix_tracker = array();
@@ -1877,6 +1939,8 @@ class Lemmatizer {
                         // return particle
                         if(!$this->found && $this->removed["particle"]!="") {
 
+                            echo "<br /><strong>BACKTRACK: RESTORING particle..</strong>";
+
                             $temp = $temp . $this->removed["particle"];
                             $this->removed["derivational_prefix"] = "";
                             $this->complex_prefix_tracker = array();
@@ -1885,6 +1949,8 @@ class Lemmatizer {
                             if($this->found) break;
 
                         }
+
+                        echo "<br /><strong>end of suffix backtrack</strong>";
 
                 }
 
@@ -1900,6 +1966,8 @@ class Lemmatizer {
                 $result = $temp;
 
             }
+
+            echo "<br /><br />Executing rule 8 (no lookup found)";
 
             /*
                 

@@ -8,120 +8,15 @@
                     Rolando <rolando_kai@hotmail.com>
                     Stephen Hadisurja <stephen.hadisurja@gmail.com>
 
-    @version        0.7   [revision by David]
+    @version        0.8   [revision by David]
 
     @date           15 Jan 2013, 03:02
 
     @description    @todo LOW - explain what all this fuzz is about. bla
                     bla bla bla.. lorem ipsum dolor sit amet
 
-    -------------------------------------------------------------------
-
-    FAILED CASES:
-    ------------
-    + kepemilikan (possible rule issue)
-    + perbankan
-    + bertingkah, bernaskah (rule precedence)
-    + penyawaan, menyawakan (nyawa => sawa)
-    + mengepakkan, kepakan, kepakkan (overstemming, rule precedence)
-    + pengerukan, pengenal, pengenalan, dikenalkan (rule issue: penge-, menge-)
-    + memberikan (rule precedence)
-    + berupa (overstemming)
-    
-
-    FIXED CASES:
-    -----------
-    + 'pertama-tama'
-    + mengalami (understemming) DONE: exception
-    + tebal, ahli negara (dictionary 28K issue) DONE: changed with KBBI
-    + menyepelekan (rule) DONE
-    + menyatakan, penyanyi (incomplete rule) DONE:rule addition
-    + words that end with -k, attached with -an suffix (sidikan, tolakan, etc) (overstemming) DONE:possibility explored
-
-    CHANGELOG:
-    ---------
-    VERSION 0.7
-    + fixed errors: 'pertama-tama', 'mengalami', etc.
-    + removed debug case
-
-    VERSION 0.6 - 15 Jan 2013 03:02
-    + removed TODO List for now
-    + added 'FAILED CASES' section for better accuracy improvement
-    + added few comments here and there
-    + optimized lookup function
-    + optimized query calls
-    + added prefix stacking/combination constraint
-    + modified recoding path order for rule 16 & 28
-    + modified rule 19 & 31 for lemmas like 'nyanyi', 'nyata'
-
-    VERSION 0.5 - 12 Jan 2013 23:18
-    + [0.5a] hotfixed + reenabled disallowed prefix
-
-    + temporary disabled disallowed prefix
-    + added lookup function
-    + added implementation docs for recoding function
-    + changed $original property to $found; also changed its role
-    + added backtracking feature
-    + modified main function parameter; added backtrack step
-
-    VERSION 0.4-debug - 12 Jan 2013
-    + [0.4a] hotfix for recoding function; enabled multiple recoding sources, and 
-      optimized algorithm
-
-    + changed file name to "lemmatizer"
-    + (-debug) tag added to version because of debugging prints (will be removed on release version)
-    + added no0b interface for easier testing
-    + updated TODO list
-    + added debugging prints for tracking issues / problems.
-    + implemented recoding function
-    + optimized main function implementation
-    + implemented rules ordering via SWITCH CASE
-    + added checking procedure for duplicate derivational prefix
-    + minor modification on derivational prefix removal; return false if prefix not found
-    + correctly implemented disallowed affix pair checker
-    + added error variable to flag errors
-
-    VERSION 0.3 - 10 Jan 2013
-    + updated TODO list
-    + added rules for handling 'pe-' prefix variants
-    + updated TODO list
-    + slight source documentation update
-    + variable $prefix to store the detected prefix; this was done to prevent variable overloading at rule 13 and 17
-    + rules for handling 'be-', 'me-', and 'te-' prefix variants
-    + constants to store repetitive regex patterns such as vowel, consonant, alphabet (VOWEL, CONSONANT, ALPHA respectively)
-    + variable $type to easily control what kind of prefix we're handling
-    + added variable for tracking complex prefix transformations (for later backtracking step)
-    + added variable for tracking recoding path possibility (for recoding step)
-
-    VERSION 0.2 - 05 Jan 2013
-    + [0.2c] added plain derivational prefix removal
-    + [0.2c] added comments that separate properties and methods
-    + [0.2c] added a few basic logic to main public function 'eat'
-    + [0.2c] removed disallowed affix pairs function, for reengineering
-    + [0.2c] reconfigured functions that use pattern arrays
-    + [0.2c] revamped $pattern and $pattern2 into an array
-
-    + [0.2b] priorities for each todo 
-    + [0.2b] todo anchor for incomplete derivational suffix procedure
-
-    + rule precedence check (check_rule)
-    + derivational suffix removal function (delete_derivational_suffix)
-    + property that holds removed suffixes/prefixes ($removed)
-    + wrapped things into a class: Lemmatizer
-    + DEBUG FUNCTIONS:  eat, getRemoved
-      (look for @debug tags!)
-
-    VERSION 0.1 - 04 Jan 2013
-    + inflectional suffix removal function (delete_inflectional_suffix)
-
 **/
 
-
-/**
-    Le grandiose. The Class. This is what it's all about!
-    @todo LOW - (Seriously, do some neat description here.)
-
-**/
 class Lemmatizer {
 
     /*
@@ -293,10 +188,8 @@ class Lemmatizer {
             if($match[1] == $match[2]) {
 
                 $check = $match[1];
+                $check2 = $word;
 
-            } else {
-
-                $check2 = $match[1];
             }
 
         }
@@ -396,19 +289,20 @@ class Lemmatizer {
             Regular expression for affix pairs:
             ber - lah
             ber - an
+            +kah
+
             me - i
             di - i
             pe - i
             ter - i
-
+            
             @var array list of strings
         */
         $patterns = array(
-                0 => "/^be(?<word>{$alpha})([^k]an|lah)$/",
+                0 => "/^be(?<word>{$alpha})([^k]an|lah|kah)$/",
                 1 => "/^(me|di|pe|te)(?<word>{$alpha})(i)$/",
                 2 => "/^(k|s)e(?<word>{$alpha})(i|kan)$/",
-                3 => "/^(me|di|te|pe)(?<word>{$alpha})(an)$/",
-                4 => "/^pe(?<word>{$alpha}(tah|[^k]an))/"
+                3 => "/^(pe[nm]|di[tmp])(?<word>ah|ak|er)an$/"
             );
 
         /*
@@ -777,7 +671,7 @@ class Lemmatizer {
                         /*
                             RULE 1
                             input: berV...
-                            output: berV... | be - rV...
+                            output: ber - V... | be - rV...
                         */
                         if(preg_match("/^ber$vowel/", $result)) {
 
@@ -1395,13 +1289,13 @@ class Lemmatizer {
                         */
                         else if(preg_match("/^peny$vowel/", $result)) {
 
-                            $result = preg_replace("/^peny/", "s", $result);
+                            $result = preg_replace("/^pe/", "", $result);
 
                             // save prefix changes
-                            $modification = array("peny" => "s");
+                            $modification = array("pe" => "");
 
                             // save recoding path
-                            $this->recoding_tracker[$prefix] = array("pe" => "");
+                            $this->recoding_tracker[$prefix] = array("peny" => "s");
 
                         }
 
@@ -1463,7 +1357,7 @@ class Lemmatizer {
                             input: peC1erC2...
                             output: pe-C1erC2... where C1!={r|w|y|l|m|n}
                         */
-                        else if(preg_match("/^ter[bcdfghjkpqstvxz]er$consonant/", $result)) {
+                        else if(preg_match("/^pe[bcdfghjkpqstvxz]er$consonant/", $result)) {
 
                             $result = preg_replace("/^pe/", "", $result);
 
@@ -1661,6 +1555,56 @@ class Lemmatizer {
                         // returns the result
                         return $temp;
                     
+                    }
+
+                    $previous = "";
+
+                    // records to variable to $record for continued processing
+                    $record = $temp;
+
+                    $before = count($this->complex_prefix_tracker);
+
+                    // the iteration is done for maximum three times
+                    for($i=0; $i<3; $i++) {
+
+                        /*
+                            Temporary variable; holds the value before the word
+                            undergoes derivation prefix removal. Used for comparison,
+                            whether 
+
+                            @var string
+                        */
+                        $previous = $record;
+
+                        // delete derivational prefix
+                        $record = $this->delete_derivational_prefix($record);
+
+                        /*
+
+                            Checks for disallowed affix combination,
+                            Checks if the lemma is already found,
+                            Checks if the no prefix was removed, or the amount of prefixes removed are already 2.
+
+                        */
+                        if(($i==0 && $this->has_disallowed_pairs())
+                            || $record == $previous
+                            || count($this->removed['derivational_prefix'])>3) 
+                        {
+                            break;
+                        }
+                        else if($this->found) return $record;
+                    }
+
+                    if(count($this->complex_prefix_tracker) > $before) {
+
+                        $count = 0;
+                        foreach($this->complex_prefix_tracker as $key => $value) {
+                            $count++;
+                            if($count <= $before) continue;
+
+                            unset($this->complex_prefix_tracker[$key]);
+                            unset($this->removed['derivational_prefix'][$count-1]);
+                        }
                     }
 
                 }

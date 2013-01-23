@@ -8,7 +8,7 @@
                     Rolando <rolando_kai@hotmail.com>
                     Stephen Hadisurja <stephen.hadisurja@gmail.com>
 
-    @version        0.7-debug   [revision by David]
+    @version        0.8-debug   [revision by David]
 
     @date           15 Jan 2013, 03:02
 
@@ -17,19 +17,32 @@
 
     -------------------------------------------------------------------
 
+    added rule precedence be -kah
+    added rule precedence for dimakan,pemakan,pemeran,penahan,ditahan
+    swapped menyV and penyV recoding path
+
     FAILED CASES:
     ------------
-    + bertingkah, bernaskah (rule precedence)
-    + penyawaan, menyawakan (nyawa => sawa)
-    + mengepakkan, kepakan, kepakkan (overstemming, rule precedence)
-    + pengerukan, pengenal, pengenalan, dikenalkan (rule issue: penge-, menge-)
-    + memberikan (rule precedence)
-    + berupa (overstemming)
-    
+    + kebijakan, gerakan
+    + melangkah, memadai, mengalah 
+    + asean (over)
+    + pengembang, mengalahkan
+    + berumpun, berupa (overlemmatized)
+    + mengepakkan, kepakan(overstemming, rule precedence)
+    + pengerukan (rule issue: penge-, menge-)
+    + berombak, beramal, berubah (underlemmatize) - dependancy to berV rule.
 
     FIXED CASES:
     -----------
-    + 'pertama-tama'
+    0.8
+    + penyawaan, menyawakan (nyawa => sawa) fixed: swapped recoding path for penyV
+    + pemakan, pemeran, penahan, ditahan fixed: exception in rule precedence
+    + bertingkah, bernaskah (rule precedence) fixed: added rule precedence be -kah
+    + memberikan (rule precedence) fixed: returned rule precedence 
+    + persekutuan (overlemmatize)
+
+    0.7 and below
+    + 'masing-masing' (incomplete rule) DONE: added rule
     + mengalami (understemming) DONE: exception
     + tebal, ahli negara (dictionary 28K issue) DONE: changed with KBBI
     + menyepelekan (rule) DONE
@@ -38,8 +51,12 @@
 
     CHANGELOG:
     ---------
+    VERSION 0.8
+    + changelog and information are removed in the class version
+    + accuracy optimization (see fixed cases)
+
     VERSION 0.7
-    + fixed errors: 'pertama-tama', 'mengalami', etc.
+    + fixed errors:'mengalami', etc.
     + removed debug case
 
     VERSION 0.6 - 15 Jan 2013 03:02
@@ -49,6 +66,7 @@
     + optimized lookup function
     + optimized query calls
     + added prefix stacking/combination constraint
+    + modified rule 18 (with if V = e)
     + modified recoding path order for rule 16 & 28
     + modified rule 19 & 31 for lemmas like 'nyanyi', 'nyata'
 
@@ -292,10 +310,7 @@ class Lemmatizer {
             if($match[1] == $match[2]) {
 
                 $check = $match[1];
-
-            } else {
-
-                $check2 = $match[1];
+                $check2 = $word;
             }
 
         }
@@ -358,7 +373,6 @@ class Lemmatizer {
             @var PDO Object
         */
         $query = $this->database->query("SELECT * FROM dictionary WHERE lemma LIKE $query_string LIMIT 1");
-
         // updates total dictionary lookup counter
         $this->total_lookup++;
 
@@ -412,11 +426,10 @@ class Lemmatizer {
             @var array list of strings
         */
         $patterns = array(
-                0 => "/^be(?<word>{$alpha})([^k]an|lah)$/",
+                0 => "/^be(?<word>{$alpha})([^k]an|lah|kah)$/",
                 1 => "/^(me|di|pe|te)(?<word>{$alpha})(i)$/",
                 2 => "/^(k|s)e(?<word>{$alpha})(i|kan)$/",
-                3 => "/^(me|di|te|pe)(?<word>{$alpha})([^k]an)$/",
-                4 => "/^pe(?<word>{$alpha}(tah|[^k]an))/"
+                3 => "/^(pe[nm]|di[tmp])(?<word>ah|ak|er)an$/"
             );
 
         /*
@@ -788,7 +801,7 @@ class Lemmatizer {
                         /*
                             RULE 1
                             input: berV...
-                            output: berV... | be - rV...
+                            output: ber - V... | be - rV...
                         */
                         if(preg_match("/^ber$vowel/", $result)) {
 
@@ -1138,27 +1151,6 @@ class Lemmatizer {
                             $this->recoding_tracker[$prefix] = array("meng1" => "k");
                             $this->recoding_tracker[$prefix]["menge"] = "";
 
-                            // if($match[1] == 'e') {
-
-                            //     $result = preg_replace("/^menge/", "", $result);
-
-                            //     // save prefix changes
-                            //     $modification = array("menge" => "");
-
-                            //     $this->recoding_tracker[$prefix] = array("meng1" => "");
-                            //     $this->recoding_tracker[$prefix]["meng2"] = "k";
-
-                            // } else {
-
-                            //     $result = preg_replace("/^meng/", "", $result);
-
-                            //     // save prefix changes
-                            //     $modification = array("meng" => "");
-
-                            //     // save recoding path
-                            //     $this->recoding_tracker[$prefix] = array("meng" => "k");    
-                            // }
-                            
                         }
 
                         /*
@@ -1427,13 +1419,13 @@ class Lemmatizer {
                         */
                         else if(preg_match("/^peny$vowel/", $result)) {
 
-                            $result = preg_replace("/^peny/", "s", $result);
+                            $result = preg_replace("/^pe/", "", $result);
 
                             // save prefix changes
-                            $modification = array("peny" => "s");
+                            $modification = array("pe" => "");
 
                             // save recoding path
-                            $this->recoding_tracker[$prefix] = array("pe" => "");
+                            $this->recoding_tracker[$prefix] = array("peny" => "s");
 
                         }
 
@@ -1495,7 +1487,9 @@ class Lemmatizer {
                             input: peC1erC2...
                             output: pe-C1erC2... where C1!={r|w|y|l|m|n}
                         */
-                        else if(preg_match("/^ter[bcdfghjkpqstvxz]er$consonant/", $result)) {
+                        else if(preg_match("/^pe[bcdfghjkpqstvxz]er$consonant/", $result)) {
+
+                            echo "RULE 35";
 
                             $result = preg_replace("/^pe/", "", $result);
 
@@ -1699,10 +1693,61 @@ class Lemmatizer {
                         // returns the result
                         return $temp;
                     
-                    } else {
+                    }
 
-                        echo "No recoding path found for this prefix. Continuing...<br />";
+                    $changes = array();
 
+                    $previous = "";
+
+                    // records to variable to $record for continued processing
+                    $record = $temp;
+
+                    $before = count($this->complex_prefix_tracker);
+
+                    // the iteration is done for maximum three times
+                    for($i=0; $i<3; $i++) {
+
+                        echo "Derivational Prefix Removal in Recoding: $record<br />";
+                        /*
+                            Temporary variable; holds the value before the word
+                            undergoes derivation prefix removal. Used for comparison,
+                            whether 
+
+                            @var string
+                        */
+                        $previous = $record;
+
+                        // delete derivational prefix
+                        $record = $this->delete_derivational_prefix($record);
+
+                        echo "Recoding -> Prefix Removal result: $record<br />";
+
+                        /*
+
+                            Checks for disallowed affix combination,
+                            Checks if the lemma is already found,
+                            Checks if the no prefix was removed, or the amount of prefixes removed are already 2.
+
+                        */
+                        if(($i==0 && $this->has_disallowed_pairs())
+                            || $record == $previous
+                            || count($this->removed['derivational_prefix'])>3) 
+                        {
+                            break;
+                        }
+                        else if($this->found) return $record;
+                    }
+
+                    if(count($this->complex_prefix_tracker) > $before) {
+
+                        $count = 0;
+                        foreach($this->complex_prefix_tracker as $key => $value) {
+                            $count++;
+                            if($count <= $before) continue;
+
+                            unset($this->complex_prefix_tracker[$key]);
+                            unset($this->removed['derivational_prefix'][$count-1]);
+                        }
                     }
 
                 }

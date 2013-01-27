@@ -1,0 +1,28 @@
+UNY Rancang "Software" Jadwal Pelajaran Berbasis WEB
+
+YOGYAKARTA, KOMPAS.com - Mahasiswa Pendidikan Teknik Informatika Universitas Negeri Yogyakarta Fajar Kurniawan merancang "software" atau perangkat lunak sistem penyusunan jadwal pelajaran berbasis web sesuai dengan kebutuhan sekolah.
+
+"Perancangan perangkat lunak itu dilatarbelakangi penyusunan dan aksesibilitas jadwal pelajaran di sekolah masih menemui beberapa hambatan karena kebanyakan pembuatan jadwal masih dilakukan secara manual," kata Fajar di Yogyakarta, Minggu (13/1/2013).
+
+Menurut dia, penggunaan program "spreadsheet" dari MS Excel dengan menggunakan logika atau formula yang disediakan program itu juga belum cukup efektif.
+
+Hal itu disebabkan jika kecakapan dalam menggunakan "software" MS Excel masih kurang, maka akan banyak kesulitan yang muncul dalam penyusunan jadwal pelajaran tersebut.
+
+"Selain itu, kesulitan juga terjadi pada segi aksesibilitas karena jika ada guru atau staf lain yang ingin mengecek dari komputer masing-masing, mereka masih harus meng-’copy’ file jadwal secara manual yakni dengan flashdisk," katanya.
+
+Ia mengatakan di internet memang sudah tersedia begitu banyak pilihan "software", baik gratis maupun berbayar, yang mendukung pembuatan jadwal pelajaran.
+
+Namun pada implementasinya masih banyak mengalami kekurangan karena setiap sekolah memiliki strategi penjadwalan yang kompleks. Di SMK misalnya, ada strategi "rolling" ruang praktik dan "rolling" waktu pagi atau sore.
+
+"Oleh karena itu sangat dibutuhkan perangkat lunak penyusun jadwal pelajaran yang sesuai dengan kebutuhan sekolah seperti fitur impor data, pencarian, ekspor data, dan pembagian hak akses pengguna," katanya.
+
+Menurut dia secara umum sistem yang dirancang di bawah bimbingan dosen Pendidikan Teknik Elektronika UNY Totok Sukardiyono itu memiliki tujuh halaman utama yakni halaman login, awal (home), admin, pengaturan, entri data, entri jadwal, dan cetak.
+
+"Ada beberapa tabel untuk memenuhi kebutuhan sistem tersebut. Tabel data awal yakni tabel guru, kelas, jam pelajaran, hari, identitas sekolah, dan admin," katanya.
+
+Selanjutnya dari tabel guru dan mata pelajaran diturunkan pada tabel kode pelajaran, karena terdapat beberapa guru yang mengajar lebih dari satu mata pelajaran.
+
+Ia mengatakan penyusunan jadwal pelajaran dari masing-masing tabel tersebut direlasikan ke tabel pertemuan. Pada tabel itu dipasang "constraint" agar masing-masing guru dan kelas tidak terjadi bentrok pertemuan. Selain itu, dari tabel pertemuan itu jadwal pelajaran ditampilkan dan dicetak.
+
+"Sistem itu dapat dijalankan pada berbagai jenis ’web browser’ atau sistem operasi dan tidak mengalami kendala jika dijalankan pada berbagai jenis printer untuk mencetak," katanya.
+

@@ -1,0 +1,47 @@
+Virus Komputer adalah Makhluk Hidup?
+
+KOMPAS.com - Virus komputer seharusnya masuk kategori makhluk hidup. Ia menunjukkan sifat alami manusia yang suka merusak. Inilah satu-satunya ”kehidupan” yang diciptakan manusia sesuai ”citra”-nya.
+
+Stephen Hawking, fisikawan
+
+Tanggal 8 Januari, kemarin, Stephen Hawking baru saja merayakan ulang tahunnya yang ke-71. Dialah paradoks nyata era modern ini: diperkirakan dokter hanya mencapai usia 22 tahun karena penyakit motor neuron yang melemahkan fungsi otot dan sarafnya, Hawking masih cemerlang pada usianya sekarang. Bukan anak yang menonjol di sekolah, tetapi teori-teorinya menggemparkan dunia.
+
+Hawking memang fenomena. Kitty Ferguson, penulis biografi Hawking, menyebutnya sebagai orang yang sering berpikiran dramatis. Ia tidak selalu bisa menyokong pernyataannya dengan rumus matematika, tetapi memberi sesuatu yang membuat setiap orang aktif berpikir.
+
+Sebetulnya logika Hawking tentang virus komputer tidak salah-salah amat karena memenuhi definisi sistem yang hidup. Ia bak parasit yang menginfeksi komputer sebagai inangnya, berkembang memperbanyak diri meskipun tidak memiliki metabolisme.
+
+Hawking dengan gaya sinisnya juga benar tentang manusia yang gemar merusak, dengan salah satu dampak berupa perubahan iklim yang mengancam kehidupan di Bumi. Namun, ia lupa selalu ada orang baik di dunia meski kejahatan sudah merajalela.
+
+Virus komputer
+
+Demikian pula halnya dengan virus komputer. Ketika para peretas jahat (crackers) meluncurkan serangkaian kode biner untuk menembus dan menempel kode biner yang sah dan menimbulkan berbagai masalah, ada peretas baik (hackers) yang menggunakan kemampuannya untuk terus meningkatkan keamanan jaringan. Kehadiran crackers dan hackers menjadi paradoks digital, melengkapi kehadiran para ahli yang terus menyempurnakan komputer sebagai alat bantu manusia yang paling canggih saat ini.
+
+Virus digital mulai marak seiring perkembangan teknologi komputer pada akhir tahun 1980-an. Kehadirannya terkait dengan makin banyaknya komputer pribadi (PC)—di rumah tangga dan perkantoran—begitu IBM merilis PC pada tahun 1982 dan Apple meluncurkan Macintosh tahun 1984.
+
+Kemudian muncul yang disebut computer bulletin boards. Orang dengan mudah mengakses buletin tersebut lewat modem dan mengunduh berbagai jenis program, termasuk word processors, spreadsheets, dan
+
+tentu saja games atau permainan elektronik. Dari sinilah muncul virus klasik yang dikenal dengan sebutan Trojan Horse.
+
+Virus Trojan Horse disamarkan sebagai program dengan nama dan deskripsi yang menarik sehingga orang tertarik mengunduhnya. Begitu program dijalankan, virus bekerja menghapus seluruh program komputer kita. Untunglah virus ini cepat dideteksi sehingga belum sempat tersebar luas.
+
+Merugikan
+
+Namun, ada banyak virus yang terus diciptakan dan menimbulkan kerugian, bahkan hingga jutaan dollar AS. Yang paling fenomenal tentu saja adalah serangan 6 Agustus 2010 yang dikenal sebagai Stuxnet. Di Iran, virus ini menimbulkan masalah pada beberapa mesin pemisah pembangkit listrik tenaga nuklir.
+
+Menurut penelitian perusahaan AS, Symnatex, Iran memang terkena dampak utama serangan di atas dengan 62.867 komputer terinfeksi, Indonesia (13.336), India (6.552), Amerika Serikat (2.913), Australia (2.436), Inggris (1.038), Malaysia (1.013), dan Pakistan (993). Banyaknya negara yang terkena menunjukkan bahwa serangan sangat mungkin dilakukan oleh suatu negara maju, bukan sekadar kelompok peretas.
+
+Hingga akhir tahun 2012, sudah lebih dari 1.000 jenis virus ditemukan, dari yang sekadar mengganggu hingga merusak. Atau meminjam perumpamaan Hawking, dari flu yang sembuh sendiri hingga kanker yang mematikan.
+
+Pada 22 November 2012, sebagai contoh, ditemukan virus Rootkit.Sirefef.Gen yang kemampuan penyebarannya masuk kategori medium dengan potensi merusak tinggi. Namun, para pengguna komputer di Indonesia sebenarnya lebih takut pada virus lokal karena lebih sulit dideteksi dan diatasi. Di antaranya bahkan masuk kategori ganas, seperti Babon yang mengubah properti dan tulisan AM/PM pada jam menjadi tulisan Babon. Virus lainnya antara lain adalah Blue Fantasy dan Pendekar Blank yang menyembunyikan folder dan menggantikannya dengan folder palsu, atau virus Aksika yang mematikan sistem perbaikan (restore).
+
+Perkembangan antivirus
+
+Untunglah perkembangan virus ini juga terus diimbangi para peretas baik dengan program antivirus yang semakin canggih. Di Indonesia ada SmadAV, program antivirus yang bisa diunduh gratis di internet. Program ini sangat ampuh menangkal virus lokal dan dapat digabungkan dengan hampir semua program antivirus internasional.
+
+Awal tahun ini, majalah ilmiah New Scientist juga mengulas program pelacak malware. Malware adalah kependekan dari malicious software, yang artinya peranti lunak yang digunakan untuk menyerang suatu sistem operasi komputer. Bentuknya bisa berupa sekumpulan kode biner, script, konten aktif, ataupun peranti lunak. Dalam bahasa hukum, malware biasanya disebut kontaminan komputer.
+
+Meskipun virus-virus ini seolah muncul begitu saja, sebenarnya setiap program yang diunggah di internet selalu bisa dilacak sejarahnya. Karena itu, memahami asal-usul virus, apalagi menangkap peretas jahat pemicunya, akan sangat membantu mengatasi ancaman dunia maya ini ke depan.
+
+”Visi kami adalah menyediakan database malware dunia sehingga orang bisa menggunakan untuk melindungi program komputernya,” kata Josh Saxe dari Invincea Labs di Fairfax, Virginia, Amerika Serikat.
+
+Saxe dan koleganya telah menguji 100.000 sampel malware yang berhasil mereka kumpulkan untuk melihat cara kerja dan berbagai kemungkinan variannya. Barangkali Hawking pun perlu berkenalan dengan para peretas baik ini.

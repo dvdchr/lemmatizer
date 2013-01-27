@@ -21,6 +21,9 @@ $_CATEGORIES = array(
     4 => "sains"
     );
 
+// Show result after each process
+$_DEBUG = false;
+
 
 /*
     
@@ -52,29 +55,86 @@ foreach($_CATEGORIES as $category) {
         // fetch file
         $file_contents = file_get_contents($file_name, FILE_USE_INCLUDE_PATH);
         echo "$category/$file_number.txt</br>";
-        // parse to words
-        $file_contents = str_replace(PHP_EOL, ' ', $file_contents);
-        $file_contents = preg_replace('/[A-Z ]+, (KOMPAS|Kompas).com (-|–) /', '', $file_contents);
-        $file_contents = preg_replace('/([^a-zA-Z]+) ?- ?([^a-zA-Z]+)/', ' ', $file_contents);
-        $file_contents = preg_replace('/[^a-zA-Z\- \r\n]+/', ' ', $file_contents);
-        $file_contents = preg_replace('/([a-zA-Z]+) - ([a-zA-Z]+)/', '$1-$2', $file_contents);
-        $file_contents = preg_replace('/\s[a-zA-Z]{1,3}\s/', ' ', $file_contents);
-        $file_contents = preg_replace('/^[a-zA-Z]{1,3}\s/', '', $file_contents);
-        $file_contents = preg_replace('/\s[a-zA-Z]{1,3}$/', '', $file_contents);
-        $file_contents = preg_replace('/([a-zA-Z]+- |--| -|- | - )/', ' ', $file_contents);
-        $file_contents = preg_replace('/^\s{1,}/', '', $file_contents);
-        $file_contents = preg_replace('/\s{1,}$/', '', $file_contents);
-        $file_contents = preg_replace('/\s{2,}/', ' ', $file_contents);
-        
+
+        /*
+            
+            DATA FORMATTING
+
+        */
         $file_contents = strtolower($file_contents);
+        if($_DEBUG) {
+            echo "<strong>original:</strong><br />";
+            echo var_dump($file_contents) . "<br /><br />";
+        }
+        //$file_contents = str_replace(PHP_EOL, ' ', $file_contents);
+        $file_contents = preg_replace('/[a-z ]+, kompas.com [^\s] /', '', $file_contents);
+        if($_DEBUG) {    
+            echo "<strong>Removed KOMPAS part</strong><br />";
+            echo var_dump($file_contents) . "<br /><br />";
+        }
+        // $file_contents = preg_replace('/([^a-zA-Z]+) ?- ?([^a-zA-Z]+)/', '', $file_contents);
+        $file_contents = preg_replace('/[^a-z\- ]+/', ' ', $file_contents);
+        if($_DEBUG) {
+            echo "<strong>Removed non-alphabet chars</strong><br />";
+            echo var_dump($file_contents) . "<br /><br />";
+        }
+
+        $file_contents = preg_replace('/([a-z]+) - ([a-z]+)/', '$1-$2', $file_contents);
+        if($_DEBUG) {
+            echo "<strong>Join separated hyphenated words</strong><br />";
+            echo var_dump($file_contents) . "<br /><br />";
+        }
+
+        $file_contents = preg_replace('/([a-zA-Z]+- |--| -|- | - )/', ' ', $file_contents);
+        if($_DEBUG) {
+            echo "<strong>Remove additional stripe character</strong><br />";
+            echo var_dump($file_contents) . "<br /><br />";
+        }
+
+        $file_contents = preg_replace('/^[a-z]{1,3}\s/', '', $file_contents);
+        if($_DEBUG) {
+            echo "<strong>Remove words less than 3 chars - At the Start</strong><br />";
+            echo var_dump($file_contents) . "<br /><br />";
+        }
+
+        $file_contents = preg_replace('/\s[a-z]{1,3}\s/', '  ', $file_contents);
+        if($_DEBUG) {
+            echo "<strong>Removed words less than 3 chars - First Round</strong><br />";
+            echo var_dump($file_contents) . "<br /><br />";
+        }
+
+        $file_contents = preg_replace('/\s[a-z]{1,3}\s/', '  ', $file_contents);
+        if($_DEBUG) {
+            echo "<strong>Removed words less than 3 chars - Second Round</strong><br />";
+            echo var_dump($file_contents) . "<br /><br />";
+        }
+
+        $file_contents = preg_replace('/^\s{1,}/', '', $file_contents);
+        if($_DEBUG) {
+            echo "<strong>Removed whitespace character at the start</strong><br />";
+            echo var_dump($file_contents) . "<br /><br />";
+        }
+
+        $file_contents = preg_replace('/\s{1,}$/', '', $file_contents);
+        if($_DEBUG) {
+            echo "<strong>Removed whitespace character at the end</strong><br />";
+            echo var_dump($file_contents) . "<br /><br />";
+        }
+
+        $file_contents = preg_replace('/\s{2,}/', ' ', $file_contents);
+        if($_DEBUG) {
+            echo "<strong>Remove multiple whitespaces</strong><br />";
+            echo var_dump($file_contents) . "<br /><br />";
+        }
 
         $words = explode(" ", $file_contents);
+        if($_DEBUG) echo "<strong>Final Result</strong><br />";
+        echo var_dump($words) . "<br /><br />";
+
         foreach($words as $word){
 
             $query_string .= "('". $word ."', ". strlen($word) .", '$category-$file_number'),";
         }
-
-        //var_dump($words);
 
         // replace last comma with semicolon
         $query_string = preg_replace('/,$/', ';', $query_string);

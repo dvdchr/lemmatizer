@@ -1,0 +1,70 @@
+begin
+    read input word
+    perform dictionary lookup
+    if lookup success
+        return lemma and end
+    endif
+    precedence = check rule precedence
+    
+    if rule precedence is prefix first 
+
+        remove derivational prefix
+        perform dictionary lookup
+        if lookup success
+            return lemma and end
+        endif
+
+        perform recoding
+        perform dictionary lookup
+        if lookup success
+            return lemma and end
+        endif
+
+        remove inflectional suffix
+        perform dictionary lookup
+        if lookup success
+            return lemma and end
+        endif
+
+        remove derivational suffix
+        perform dictionary lookup
+        if lookup success
+            return lemma and end
+        endif
+
+    else if rule precedence is suffix first
+
+        remove inflectional suffix
+        perform dictionary lookup
+        if lookup success
+            return lemma and end
+        endif
+
+        remove derivational suffix
+        perform dictionary lookup
+        if lookup success
+            return lemma and end
+        endif
+
+        remove derivational prefix
+        perform dictionary lookup
+        if lookup success
+            return lemma and end
+        endif
+
+        perform recoding
+        perform dictionary lookup
+        if lookup success
+            return lemma and end
+        endif
+
+    endif
+
+    perform suffix backtracking
+    perform dictionary lookup
+    if lookup success
+        return lemma and end
+    else if word still not found
+        return input word
+    endif
+end

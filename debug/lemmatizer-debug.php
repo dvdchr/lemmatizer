@@ -8,7 +8,7 @@
                     Rolando <rolando_kai@hotmail.com>
                     Stephen Hadisurja <stephen.hadisurja@gmail.com>
 
-    @version        0.8-debug   [revision by David]
+    @version        0.9a-debug   [revision by David]
 
     @date           15 Jan 2013, 03:02
 
@@ -51,6 +51,11 @@
 
     CHANGELOG:
     ---------
+    VERSION 0.9
+    + [0.9a] corrected 'input_is_lemma' behaviour
+    + [0.9a] hotfix for rule 9
+    + added "input is lemma" message when step 1 immediately returns result
+
     VERSION 0.8
     + changelog and information are removed in the class version
     + accuracy optimization (see fixed cases)
@@ -964,6 +969,7 @@ class Lemmatizer {
                         */
                         else if(preg_match("/^ter$consonant(?!er)/", $result)) {
 
+                            echo "RULE 8";
                             $result = preg_replace("/^ter/", "", $result);
 
                             // save prefix changes
@@ -976,8 +982,9 @@ class Lemmatizer {
                             input: teC1erC2...
                             output: te-C1erC2... where C1!='r'
                         */
-                        else if(preg_match("/^ter[bcdfghjklmnpqstvwxyz]er$consonant/", $result)) {
+                        else if(preg_match("/^te[bcdfghjklmnpqstvwxyz]er$consonant/", $result)) {
 
+                            echo "RULE 9";
                             $result = preg_replace("/^te/", "", $result);
 
                             // save prefix changes
@@ -1799,6 +1806,7 @@ class Lemmatizer {
         */
         if($temp) {
 
+            if(!$backtrack_step) $this->error = "input_is_lemma";
             return $temp;
 
         } else {

@@ -8,12 +8,11 @@
                     Rolando <rolando_kai@hotmail.com>
                     Stephen Hadisurja <stephen.hadisurja@gmail.com>
 
-    @version        0.8   [revision by David]
+    @version        0.9a   [revision by David]
 
     @date           15 Jan 2013, 03:02
 
-    @description    @todo LOW - explain what all this fuzz is about. bla
-                    bla bla bla.. lorem ipsum dolor sit amet
+    @description    Lemmatizes an Indonesian Language
 
 **/
 
@@ -846,7 +845,7 @@ class Lemmatizer {
                             input: teC1erC2...
                             output: te-C1erC2... where C1!='r'
                         */
-                        else if(preg_match("/^ter[bcdfghjklmnpqstvwxyz]er$consonant/", $result)) {
+                        else if(preg_match("/^te[bcdfghjklmnpqstvwxyz]er$consonant/", $result)) {
 
                             $result = preg_replace("/^te/", "", $result);
 
@@ -1654,6 +1653,7 @@ class Lemmatizer {
         */
         if($temp) {
 
+            if((!$backtrack_step) $this->error = "input_is_lemma";
             return $temp;
 
         } else {

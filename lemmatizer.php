@@ -8,7 +8,7 @@
                     Rolando <rolando_kai@hotmail.com>
                     Stephen Hadisurja <stephen.hadisurja@gmail.com>
 
-    @version        0.9a   [revision by David]
+    @version        0.9b   [revision by David]
 
     @date           15 Jan 2013, 03:02
 
@@ -301,7 +301,7 @@ class Lemmatizer {
                 0 => "/^be(?<word>{$alpha})([^k]an|lah|kah)$/",
                 1 => "/^(me|di|pe|te)(?<word>{$alpha})(i)$/",
                 2 => "/^(k|s)e(?<word>{$alpha})(i|kan)$/",
-                3 => "/^(pe[nm]|di[tmp])(?<word>ah|ak|er)an$/"
+                3 => "/^([pm]e[nm]|di[tmp])(?<word>ah|ak|er|el)an$/"
             );
 
         /*
@@ -1653,7 +1653,7 @@ class Lemmatizer {
         */
         if($temp) {
 
-            if((!$backtrack_step) $this->error = "input_is_lemma";
+            if(!$backtrack_step) $this->error = "input_is_lemma";
             return $temp;
 
         } else {
